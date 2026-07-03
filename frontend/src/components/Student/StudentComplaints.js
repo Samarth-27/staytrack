@@ -48,12 +48,12 @@ function StudentComplaints({ token }) {
     }
   };
 
-  if (loading) return <div className="loading">🔴 Loading complaints...</div>;
+  if (loading) return <div className="loading">Loading complaints...</div>;
 
   return (
     <div className="complaints-container">
       <div className="section-header">
-        <h2>🔴 My Complaints</h2>
+        <h2>My Complaints</h2>
         <button className="btn-primary" onClick={() => setShowForm(!showForm)}>
           {showForm ? '✕ Cancel' : '➕ New Complaint'}
         </button>

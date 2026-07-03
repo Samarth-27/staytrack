@@ -40,7 +40,7 @@ function WardenComplaints({ token }) {
     }
   };
 
-  if (loading) return <div className="loading">🔴 Loading complaints...</div>;
+  if (loading) return <div className="loading">Loading complaints...</div>;
 
   return (
     <div className="complaints-container">

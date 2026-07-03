@@ -17,10 +17,10 @@ function OwnerDashboard({ user, token, onLogout }) {
     <div className="dashboard owner-dashboard">
       {/* Header */}
       <header className="dashboard-header">
-        <h1>👑 Owner Dashboard</h1>
+        <h1>Owner Dashboard</h1>
         <div className="header-right">
           <span>Welcome, <strong>{user.name}</strong></span>
-          <button onClick={onLogout} className="logout-btn">🚪 Logout</button>
+          <button onClick={onLogout} className="logout-btn">Logout</button>
         </div>
       </header>
 
@@ -30,37 +30,37 @@ function OwnerDashboard({ user, token, onLogout }) {
           className={activeTab === 'overview' ? 'active' : ''} 
           onClick={() => setActiveTab('overview')}
         >
-          📊 Overview
+          Overview
         </button>
         <button 
           className={activeTab === 'complaints' ? 'active' : ''} 
           onClick={() => setActiveTab('complaints')}
         >
-          🔴 Complaints
+          Complaints
         </button>
         <button 
           className={activeTab === 'payments' ? 'active' : ''} 
           onClick={() => setActiveTab('payments')}
         >
-          💰 Payments
+          Payments
         </button>
         <button 
           className={activeTab === 'pending' ? 'active' : ''} 
           onClick={() => setActiveTab('pending')}
         >
-          ⏳ Pending Students
+          Pending Students
         </button>
         <button 
           className={activeTab === 'reports' ? 'active' : ''} 
           onClick={() => setActiveTab('reports')}
         >
-          📈 Reports
+          Reports
         </button>
         <button 
           className={activeTab === 'rooms' ? 'active' : ''} 
           onClick={() => setActiveTab('rooms')}
         >
-          🚪 Rooms
+          Rooms
         </button>
       </div>
 

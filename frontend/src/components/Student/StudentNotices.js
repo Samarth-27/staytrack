@@ -9,10 +9,10 @@ function StudentNotices() {
 
   return (
     <div className="notices-container" style={{ padding: '20px' }}>
-      <h2>📌 Notice Board & Updates</h2>
+      <h2>Notice Board & Updates</h2>
       <div className="notices-list" style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginTop: '20px' }}>
         {notices.map(notice => (
-          <div key={notice.id} className="notice-card" style={{ background: '#fff', borderLeft: '4px solid #3498db', padding: '15px', borderRadius: '4px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+          <div key={notice.id} className="notice-card" style={{ background: 'var(--bg-surface)', borderLeft: '4px solid var(--accent)', padding: '15px', borderRadius: '4px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
               <h4 style={{ margin: 0, color: '#2c3e50' }}>{notice.title}</h4>
               <span style={{ fontSize: '12px', color: '#7f8c8d' }}>{new Date(notice.date).toLocaleDateString()}</span>
@@ -22,7 +22,7 @@ function StudentNotices() {
         ))}
       </div>
       
-      <div style={{ marginTop: '30px', padding: '20px', background: '#fdf3e7', borderRadius: '8px', border: '1px solid #f39c12' }}>
+      <div style={{ marginTop: '30px', padding: '20px', background: 'var(--bg-surface)', borderRadius: '8px', border: '1px solid var(--border-dim)' }}>
         <h3 style={{ margin: '0 0 10px 0', color: '#e67e22' }}>⚠️ Hostel Rules</h3>
         <ul style={{ paddingLeft: '20px', margin: 0, color: '#d35400', lineHeight: '1.8' }}>
           <li>No loud music after 10 PM.</li>

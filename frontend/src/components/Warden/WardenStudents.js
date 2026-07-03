@@ -119,12 +119,12 @@ function WardenStudents({ token }) {
 
   const filteredStudents = students.filter(s => showArchived ? s.status === 'archived' : s.status !== 'archived');
 
-  if (loading) return <div className="loading">👥 Loading students...</div>;
+  if (loading) return <div className="loading">Loading students...</div>;
 
   return (
     <div className="students-container">
       <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h2>👥 Student Management</h2>
+        <h2>Student Management</h2>
         <div style={{ display: 'flex', gap: '10px' }}>
           <button className="btn-secondary" onClick={() => setShowArchived(!showArchived)}>
             {showArchived ? '👁️ Show Active' : '📦 Show Archived'}
@@ -143,7 +143,7 @@ function WardenStudents({ token }) {
       </div>
       
       {showForm && !showArchived && (
-        <form className="form-card" onSubmit={handleCreateStudent} style={{ marginBottom: '20px', padding: '20px', background: '#f9f9f9', borderRadius: '8px' }}>
+        <form className="form-card" onSubmit={handleCreateStudent} style={{ marginBottom: '20px', padding: '20px', background: 'var(--bg-surface)', borderRadius: '8px' }}>
           <h3>Create Student Account</h3>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
             <div className="form-group">
@@ -167,11 +167,9 @@ function WardenStudents({ token }) {
         </form>
       )}
       
-      {message && <div className={`message ${message.includes('✓') ? 'success' : 'error'}`} style={{ padding: '10px', marginBottom: '15px', borderRadius: '5px', background: message.includes('✓') ? '#d4edda' : '#f8d7da', color: message.includes('✓') ? '#155724' : '#721c24' }}>{message}</div>}
-      
-      <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+      {message && <div className={`message ${message.includes('✓') ? 'success' : 'error'}`} style={{ padding: '10px', marginBottom: '15px', borderRadius: '5px',   borderCollapse: 'collapse' }}>
         <thead>
-          <tr style={{ background: '#eee', textAlign: 'left' }}>
+          <tr style={{ background: 'var(--bg-surface)', textAlign: 'left' }}>
             {!showArchived && <th><input type="checkbox" onChange={(e) => setSelectedStudents(e.target.checked ? filteredStudents.map(s => s._id) : [])} checked={selectedStudents.length === filteredStudents.length && filteredStudents.length > 0} /></th>}
             <th>Name</th>
             <th>Username</th>
@@ -192,7 +190,7 @@ function WardenStudents({ token }) {
                 <td>
                   {student.status !== 'archived' ? (
                     <div style={{ display: 'flex', gap: '5px' }}>
-                      <button className="btn-small" onClick={() => handleResetPassword(student._id)}>🔑 Reset</button>
+                      <button className="btn-small" onClick={() => handleResetPassword(student._id)}>Reset</button>
                       <button className="btn-small btn-danger" onClick={() => handleArchive(student._id)}>📦 Archive</button>
                     </div>
                   ) : (

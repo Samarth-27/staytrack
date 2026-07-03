@@ -62,21 +62,21 @@ function OwnerReports({ token }) {
 
   return (
     <div className="reports-container">
-      <h2>📈 Advanced Reports & Analytics</h2>
+      <h2>Advanced Reports & Analytics</h2>
       
       <div className="tabs report-tabs" style={{ marginBottom: '20px' }}>
-        <button className={activeReport === 'revenue' ? 'active' : ''} onClick={() => setActiveReport('revenue')}>💰 Revenue</button>
+        <button className={activeReport === 'revenue' ? 'active' : ''} onClick={() => setActiveReport('revenue')}>Revenue</button>
         <button className={activeReport === 'payments' ? 'active' : ''} onClick={() => setActiveReport('payments')}>💳 Payments</button>
-        <button className={activeReport === 'students' ? 'active' : ''} onClick={() => setActiveReport('students')}>👥 Students</button>
-        <button className={activeReport === 'complaints' ? 'active' : ''} onClick={() => setActiveReport('complaints')}>🔴 Complaints</button>
+        <button className={activeReport === 'students' ? 'active' : ''} onClick={() => setActiveReport('students')}>Students</button>
+        <button className={activeReport === 'complaints' ? 'active' : ''} onClick={() => setActiveReport('complaints')}>Complaints</button>
       </div>
 
       <div style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '15px' }}>
-        {loading && <span style={{ color: '#3498db', fontWeight: 'bold' }}>⏳ Fetching latest data...</span>}
+        {loading && <span style={{ color: '#3498db', fontWeight: 'bold' }}>Fetching latest data...</span>}
         {reportData && !loading && (
           <>
             <button className="btn-warning" onClick={downloadPDF}>
-              📄 Download PDF
+              Download PDF
             </button>
           </>
         )}
@@ -90,7 +90,7 @@ function OwnerReports({ token }) {
           
           <div className="report-stats" style={{ display: 'flex', gap: '20px', marginBottom: '20px' }}>
             {Object.entries(reportData.stats || {}).map(([key, value]) => (
-              <div key={key} className="stat-box" style={{ background: '#f5f5f5', padding: '15px', borderRadius: '8px' }}>
+              <div key={key} className="stat-box" style={{ background: 'var(--bg-surface)', padding: '15px', borderRadius: '8px' }}>
                 <h4 style={{ margin: '0 0 10px 0', textTransform: 'capitalize' }}>{key.replace(/([A-Z])/g, ' $1').trim()}</h4>
                 <p style={{ fontSize: '1.5em', margin: 0, fontWeight: 'bold' }}>
                   {typeof value === 'number' && key.toLowerCase().includes('amount') ? `₹${value}` : value}
@@ -99,10 +99,10 @@ function OwnerReports({ token }) {
             ))}
           </div>
 
-          <div className="report-data" style={{ overflowX: 'auto', marginTop: '20px', background: '#fff', borderRadius: '8px', padding: '15px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+          <div className="report-data" style={{ overflowX: 'auto', marginTop: '20px', background: 'var(--bg-surface)', borderRadius: '8px', padding: '15px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
             <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
-                <tr style={{ background: '#f8f9fa', textAlign: 'left', borderBottom: '2px solid #ddd' }}>
+                <tr style={{ background: 'var(--bg-surface)', textAlign: 'left', borderBottom: '2px solid #ddd' }}>
                   {Array.isArray(reportData.data) && reportData.data.length > 0 
                     ? Object.keys(reportData.data[0]).map(k => <th key={k} style={{ padding: '12px' }}>{k.toUpperCase()}</th>)
                     : (reportData.data && !Array.isArray(reportData.data) ? <><th style={{ padding: '12px' }}>MONTH</th><th style={{ padding: '12px' }}>REVENUE</th></> : null)

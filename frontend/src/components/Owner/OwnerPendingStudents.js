@@ -26,7 +26,7 @@ function OwnerPendingStudents({ token }) {
 
   const totalPendingAmount = pendingStudents.reduce((sum, p) => sum + p.amount, 0);
 
-  if (loading) return <div className="loading">⏳ Loading pending students...</div>;
+  if (loading) return <div className="loading">Loading pending students...</div>;
 
   return (
     <div className="pending-students-container">

@@ -59,7 +59,7 @@ function StudentPayments({ token }) {
     }
   };
 
-  if (loading) return <div className="loading">💰 Loading payments...</div>;
+  if (loading) return <div className="loading">Loading payments...</div>;
 
   const totalPaid = payments.filter(p => p.status === 'paid').reduce((sum, p) => sum + p.amount, 0);
 
@@ -78,7 +78,7 @@ function StudentPayments({ token }) {
       </div>
 
       {showForm && (
-        <form className="form-card" onSubmit={handleSubmit} style={{ background: '#f8f9fa', padding: '20px', borderRadius: '8px', marginBottom: '20px' }}>
+        <form className="form-card" onSubmit={handleSubmit} style={{ background: 'var(--bg-surface)', padding: '20px', borderRadius: '8px', marginBottom: '20px' }}>
           <h3>Submit Payment Details</h3>
           
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
@@ -144,7 +144,7 @@ function StudentPayments({ token }) {
       )}
 
       <div className="payment-history">
-        <h3>💰 Payment History</h3>
+        <h3>Payment History</h3>
         <table className="data-table">
           <thead>
             <tr>
@@ -166,7 +166,7 @@ function StudentPayments({ token }) {
                   <td>₹{payment.onlineAmount || 0}</td>
                   <td>₹{payment.cashAmount || 0}</td>
                   <td className="amount"><strong>₹{payment.amount}</strong></td>
-                  <td><span className={`status ${payment.status}`}>{payment.status === 'pending' ? '⏳ Pending' : payment.status === 'pending_verification' ? '🔍 Under Review' : '✓ Paid'}</span></td>
+                  <td><span className={`status ${payment.status}`}>{payment.status === 'pending' ? 'Pending' : payment.status === 'pending_verification' ? '🔍 Under Review' : '✓ Paid'}</span></td>
                   <td>{payment.paidDate ? new Date(payment.paidDate).toLocaleDateString() : '-'}</td>
                   <td>
                     {payment.hasScreenshot ? (

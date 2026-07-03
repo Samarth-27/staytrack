@@ -65,7 +65,7 @@ function WardenPayments({ token }) {
     doc.save('warden-payments.pdf');
   };
 
-  if (loading) return <div className="loading">💰 Loading...</div>;
+  if (loading) return <div className="loading">Loading...</div>;
 
   const totalAmount = payments.reduce((sum, p) => sum + p.amount, 0);
   const paidAmount = payments.filter(p => p.status === 'paid').reduce((sum, p) => sum + p.amount, 0);

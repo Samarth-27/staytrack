@@ -15,10 +15,10 @@ function StudentDashboard({ user, token, onLogout }) {
     <div className="dashboard student-dashboard">
       {/* Header */}
       <header className="dashboard-header">
-        <h1>📚 Student Dashboard</h1>
+        <h1>Student Dashboard</h1>
         <div className="header-right">
           <span>Welcome, <strong>{user.name}</strong></span>
-          <button onClick={onLogout} className="logout-btn">🚪 Logout</button>
+          <button onClick={onLogout} className="logout-btn">Logout</button>
         </div>
       </header>
 
@@ -28,25 +28,25 @@ function StudentDashboard({ user, token, onLogout }) {
           className={activeTab === 'profile' ? 'active' : ''} 
           onClick={() => setActiveTab('profile')}
         >
-          👤 Profile
+          Profile
         </button>
         <button 
           className={activeTab === 'complaints' ? 'active' : ''} 
           onClick={() => setActiveTab('complaints')}
         >
-          🔴 Complaints
+          Complaints
         </button>
         <button 
           className={activeTab === 'payments' ? 'active' : ''} 
           onClick={() => setActiveTab('payments')}
         >
-          💰 Payments
+          Payments
         </button>
         <button 
           className={activeTab === 'notices' ? 'active' : ''} 
           onClick={() => setActiveTab('notices')}
         >
-          📌 Notices
+          Notices
         </button>
       </div>
 

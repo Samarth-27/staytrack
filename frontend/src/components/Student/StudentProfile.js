@@ -45,7 +45,7 @@ function StudentProfile({ token }) {
 
       {room && (
         <div className="form-card">
-          <h3>🚪 Room Details</h3>
+          <h3>Room Details</h3>
           <div className="form-group">
             <label>Room Number</label>
             <input type="text" value={`Room ${room.roomNumber}`} disabled />

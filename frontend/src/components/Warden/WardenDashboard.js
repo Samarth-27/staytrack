@@ -10,18 +10,18 @@ function WardenDashboard({ user, token, onLogout }) {
   return (
     <div className="dashboard warden-dashboard">
       <header className="dashboard-header">
-        <h1>🔑 Warden Dashboard</h1>
+        <h1>Warden Dashboard</h1>
         <div className="header-right">
           <span>Welcome, <strong>{user.name}</strong></span>
-          <button onClick={onLogout} className="logout-btn">🚪 Logout</button>
+          <button onClick={onLogout} className="logout-btn">Logout</button>
         </div>
       </header>
 
       <div className="tabs">
-        <button className={activeTab === 'students' ? 'active' : ''} onClick={() => setActiveTab('students')}>👥 Students</button>
-        <button className={activeTab === 'rooms' ? 'active' : ''} onClick={() => setActiveTab('rooms')}>🚪 Rooms</button>
-        <button className={activeTab === 'complaints' ? 'active' : ''} onClick={() => setActiveTab('complaints')}>🔴 Complaints</button>
-        <button className={activeTab === 'payments' ? 'active' : ''} onClick={() => setActiveTab('payments')}>💰 Payments</button>
+        <button className={activeTab === 'students' ? 'active' : ''} onClick={() => setActiveTab('students')}>Students</button>
+        <button className={activeTab === 'rooms' ? 'active' : ''} onClick={() => setActiveTab('rooms')}>Rooms</button>
+        <button className={activeTab === 'complaints' ? 'active' : ''} onClick={() => setActiveTab('complaints')}>Complaints</button>
+        <button className={activeTab === 'payments' ? 'active' : ''} onClick={() => setActiveTab('payments')}>Payments</button>
       </div>
 
       <div className="content">

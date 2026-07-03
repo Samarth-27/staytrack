@@ -33,7 +33,7 @@ function OwnerPayments({ token }) {
   const paidAmount = filteredPayments.filter(p => p.status === 'paid').reduce((sum, p) => sum + p.amount, 0);
   const pendingAmount = filteredPayments.filter(p => p.status === 'pending').reduce((sum, p) => sum + p.amount, 0);
 
-  if (loading) return <div className="loading">💰 Loading payments...</div>;
+  if (loading) return <div className="loading">Loading payments...</div>;
 
   return (
     <div className="payments-container">

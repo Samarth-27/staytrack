@@ -20,7 +20,7 @@ function WardenRooms({ token }) {
     }
   };
 
-  if (loading) return <div className="loading">🚪 Loading rooms...</div>;
+  if (loading) return <div className="loading">Loading rooms...</div>;
 
   const occupiedCount = rooms.filter(r => r.status === 'occupied').length;
 
