@@ -167,7 +167,9 @@ function WardenStudents({ token }) {
         </form>
       )}
       
-      {message && <div className={`message ${message.includes('✓') ? 'success' : 'error'}`} style={{ padding: '10px', marginBottom: '15px', borderRadius: '5px',   borderCollapse: 'collapse' }}>
+      {message && <div className={`message ${message.includes('✓') ? 'success' : 'error'}`}>{message}</div>}
+      
+      <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
         <thead>
           <tr style={{ background: 'var(--bg-surface)', textAlign: 'left' }}>
             {!showArchived && <th><input type="checkbox" onChange={(e) => setSelectedStudents(e.target.checked ? filteredStudents.map(s => s._id) : [])} checked={selectedStudents.length === filteredStudents.length && filteredStudents.length > 0} /></th>}

@@ -102,7 +102,7 @@ function OwnerReports({ token }) {
           <div className="report-data" style={{ overflowX: 'auto', marginTop: '20px', background: 'var(--bg-surface)', borderRadius: '8px', padding: '15px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
             <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
-                <tr style={{ background: 'var(--bg-surface)', textAlign: 'left', borderBottom: '2px solid #ddd' }}>
+                <tr style={{ background: 'var(--bg-surface)', textAlign: 'left', borderBottom: '1px solid var(--border-dim)' }}>
                   {Array.isArray(reportData.data) && reportData.data.length > 0 
                     ? Object.keys(reportData.data[0]).map(k => <th key={k} style={{ padding: '12px' }}>{k.toUpperCase()}</th>)
                     : (reportData.data && !Array.isArray(reportData.data) ? <><th style={{ padding: '12px' }}>MONTH</th><th style={{ padding: '12px' }}>REVENUE</th></> : null)
@@ -112,12 +112,12 @@ function OwnerReports({ token }) {
               <tbody>
                 {Array.isArray(reportData.data) 
                   ? reportData.data.map((item, idx) => (
-                      <tr key={idx} style={{ borderBottom: '1px solid #eee' }}>
+                      <tr key={idx} style={{ borderBottom: '1px solid var(--border-dim)' }}>
                         {Object.values(item).map((val, i) => <td key={i} style={{ padding: '12px' }}>{String(val)}</td>)}
                       </tr>
                     ))
                   : (reportData.data ? Object.entries(reportData.data).map(([k, v]) => (
-                      <tr key={k} style={{ borderBottom: '1px solid #eee' }}>
+                      <tr key={k} style={{ borderBottom: '1px solid var(--border-dim)' }}>
                         <td style={{ padding: '12px' }}>{k}</td>
                         <td style={{ padding: '12px' }}>₹{v}</td>
                       </tr>
