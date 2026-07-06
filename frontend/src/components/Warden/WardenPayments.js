@@ -3,7 +3,7 @@ import axios from 'axios';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
-const API_URL = 'https://staytrack-backend-ijng.onrender.com/api';
+const API_URL = 'http://localhost:5000/api';
 
 function WardenPayments({ token }) {
   const [payments, setPayments] = useState([]);
@@ -65,6 +65,21 @@ function WardenPayments({ token }) {
     doc.save('warden-payments.pdf');
   };
 
+  const [sendingReminders, setSendingReminders] = useState(false);
+
+  const handleSendReminders = async () => {
+    setSendingReminders(true);
+    try {
+      const response = await axios.post(`${API_URL}/ai/notifications/remind-fees`, {}, { headers: { Authorization: `Bearer ${token}` } });
+      alert(response.data.message);
+    } catch (error) {
+      console.error('Error sending reminders:', error);
+      alert('Failed to send reminders.');
+    } finally {
+      setSendingReminders(false);
+    }
+  };
+
   if (loading) return <div className="loading">Loading...</div>;
 
   const totalAmount = payments.reduce((sum, p) => sum + p.amount, 0);
@@ -78,8 +93,15 @@ function WardenPayments({ token }) {
         <div className="card paid"><h4>Received</h4><p className="amount">₹{paidAmount}</p></div>
         <div className="card pending"><h4>Pending</h4><p className="amount">₹{pendingAmount}</p></div>
       </div>
-      <div style={{ margin: '15px 0' }}>
+      <div style={{ margin: '15px 0', display: 'flex', gap: '10px' }}>
         <button className="btn-primary" onClick={downloadPDF}>⬇️ Download PDF Report</button>
+        <button 
+          onClick={handleSendReminders} 
+          disabled={sendingReminders}
+          style={{ backgroundColor: '#4361ee', color: '#fff', border: 'none', padding: '10px 15px', borderRadius: '5px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}
+        >
+          {sendingReminders ? 'Sending...' : '🤖 AI Smart Reminders'}
+        </button>
       </div>
       <table className="data-table">
         <thead>

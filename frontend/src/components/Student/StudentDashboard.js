@@ -3,6 +3,7 @@ import StudentProfile from './StudentProfile';
 import StudentComplaints from './StudentComplaints';
 import StudentPayments from './StudentPayments';
 import StudentNotices from './StudentNotices';
+import AIChatWidget from '../AIChatWidget';
 
 /**
  * STUDENT DASHBOARD MAIN COMPONENT
@@ -57,6 +58,8 @@ function StudentDashboard({ user, token, onLogout }) {
         {activeTab === 'payments' && <StudentPayments token={token} />}
         {activeTab === 'notices' && <StudentNotices />}
       </div>
+      
+      <AIChatWidget token={token} role="student" />
     </div>
   );
 }

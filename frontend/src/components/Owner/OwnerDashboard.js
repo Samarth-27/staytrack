@@ -5,6 +5,7 @@ import OwnerPayments from './OwnerPayments';
 import OwnerPendingStudents from './OwnerPendingStudents';
 import OwnerReports from './OwnerReports';
 import WardenRooms from '../Warden/WardenRooms';
+import AIChatWidget from '../AIChatWidget';
 
 /**
  * OWNER DASHBOARD MAIN COMPONENT
@@ -73,6 +74,7 @@ function OwnerDashboard({ user, token, onLogout }) {
         {activeTab === 'reports' && <OwnerReports token={token} />}
         {activeTab === 'rooms' && <WardenRooms token={token} />}
       </div>
+      <AIChatWidget token={token} />
     </div>
   );
 }

@@ -42,6 +42,10 @@ app.use('/api/student', studentRoutes);
 // Extended Features (Archival, Password Mgmt, Reports)
 app.use('/api', wardenExtendedRoutes);
 
+// AI Chat Routes
+const aiRoutes = require('./routes/aiRoutes');
+app.use('/api/ai', aiRoutes);
+
 // ============ ERROR HANDLING ============
 app.use((err, req, res, next) => {
   console.error('Error:', err);

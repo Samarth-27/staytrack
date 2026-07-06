@@ -32,6 +32,14 @@ const complaintSchema = new mongoose.Schema({
   // Warden Response
   wardenResponse: { type: String },
   
+  // AI Analysis Data
+  aiAnalysis: {
+    severity: { type: String, enum: ['low', 'medium', 'high', 'critical'] },
+    suggestedStaff: { type: String },
+    estimatedResolutionTime: { type: String }, // e.g., "2-4 hours", "1-2 days"
+    confidenceScore: { type: Number, min: 0, max: 100 }
+  },
+
   // Tracking
   createdAt: { type: Date, default: Date.now },
   resolvedAt: { type: Date }

@@ -42,6 +42,11 @@ router.post('/complaint', verifyToken, checkRole(['student']), async (req, res) 
     });
 
     await complaint.save();
+
+    // Trigger AI Analysis asynchronously
+    const analyzeComplaint = require('../utils/aiComplaintAnalyzer');
+    analyzeComplaint(complaint._id, title, description).catch(err => console.error('AI Analysis trigger error:', err));
+
     res.status(201).json({ message: 'Complaint submitted', complaint });
   } catch (error) {
     res.status(500).json({ message: 'Error submitting complaint', error: error.message });
@@ -111,6 +116,12 @@ router.post('/payment', verifyToken, checkRole(['student']), async (req, res) =>
         hasScreenshot: !!screenshotUrl
       });
       await payment.save();
+    }
+
+    // Trigger AI OCR asynchronously if a screenshot was provided
+    if (screenshotUrl) {
+      const processReceiptOCR = require('../utils/aiOcrService');
+      processReceiptOCR(payment._id, screenshotUrl).catch(err => console.error('AI OCR trigger error:', err));
     }
 
     res.json({ message: 'Payment recorded', payment });

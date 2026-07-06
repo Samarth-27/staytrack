@@ -26,6 +26,16 @@ const paymentSchema = new mongoose.Schema({
   paidDate: { type: Date },
   dueDate: { type: Date },
   
+  // OCR AI Data
+  ocrDetails: {
+    utr: { type: String },
+    extractedAmount: { type: Number },
+    bankName: { type: String },
+    date: { type: Date },
+    verifiedByAI: { type: Boolean, default: false },
+    confidenceScore: { type: Number }
+  },
+
   // Tracking
   createdAt: { type: Date, default: Date.now }
 });

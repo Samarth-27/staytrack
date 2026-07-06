@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 
-const API_URL = 'https://staytrack-backend-ijng.onrender.com/api';
+const API_URL = 'http://localhost:5000/api';
 
 /**
  * LOGIN PAGE COMPONENT

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import OwnerAIInsights from './OwnerAIInsights';
 
-const API_URL = 'https://staytrack-backend-ijng.onrender.com/api';
+const API_URL = 'http://localhost:5000/api';
 
 function OwnerOverview({ token }) {
   const [dashboard, setDashboard] = useState(null);
@@ -29,6 +30,7 @@ function OwnerOverview({ token }) {
 
   return (
     <div className="overview-container">
+      <OwnerAIInsights token={token} />
       <div className="stats-grid">
         <div className="stat-card">
           <div className="stat-icon"></div>

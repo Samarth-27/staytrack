@@ -400,3 +400,225 @@ body {
   color: var(--text-muted);
   text-align: center;
 }
+
+/* ============ AI COPILOT COMPONENT ============ */
+.ai-overview-container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.ai-copilot-banner {
+  background: linear-gradient(135deg, rgba(23, 23, 23, 0.8) 0%, rgba(38, 38, 38, 0.4) 100%);
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  padding: 24px 32px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.ai-copilot-banner::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+}
+
+.banner-content {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.ai-icon-large {
+  color: var(--accent);
+  opacity: 0.9;
+}
+
+.floating {
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-6px); }
+  100% { transform: translateY(0px); }
+}
+
+.banner-text h2 {
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 4px;
+  letter-spacing: -0.5px;
+}
+
+.banner-text p {
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.btn-ai-generate {
+  background: #ffffff;
+  color: #000000;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s;
+  box-shadow: 0 4px 12px rgba(255,255,255,0.1);
+}
+
+.btn-ai-generate:hover:not(:disabled) {
+  background: #e5e5e5;
+  transform: translateY(-1px);
+}
+
+.btn-ai-generate:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.ai-insights-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 24px;
+}
+
+.ai-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-dim);
+  border-radius: 12px;
+  padding: 24px;
+  transition: border-color 0.2s;
+}
+
+.ai-card:hover {
+  border-color: var(--border-strong);
+}
+
+.ai-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.ai-card-header h3 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+  color: var(--text-main);
+}
+
+.icon-gold { color: #fbbf24; }
+.icon-red { color: #f87171; }
+.icon-blue { color: #60a5fa; }
+.icon-green { color: #34d399; }
+
+.insight-summary {
+  font-size: 15px;
+  line-height: 1.6;
+  margin-bottom: 16px;
+  color: #e4e4e7;
+}
+
+.insight-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.insight-list li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+  color: var(--text-muted);
+  background: var(--bg-base);
+  padding: 12px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--border-dim);
+}
+
+.insight-list li strong {
+  color: var(--text-main);
+}
+
+.insight-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 150px;
+  gap: 12px;
+  color: var(--text-muted);
+}
+
+.metrics-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.metric-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  background: var(--bg-base);
+  border: 1px solid var(--border-dim);
+  border-radius: 8px;
+}
+
+.metric-value {
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.metric-value.open { color: var(--danger); }
+.metric-value.progress { color: var(--warning); }
+.metric-value.resolved { color: var(--success); }
+
+.metric-label {
+  font-size: 13px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.ai-urgent-section {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-dim);
+  border-radius: 12px;
+  padding: 24px;
+}
+
+.ai-urgent-section h3 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 16px;
+  margin-bottom: 16px;
+  color: var(--text-main);
+}
+
+.mt-3 { margin-top: 16px; }
