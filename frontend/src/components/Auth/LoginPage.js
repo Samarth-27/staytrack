@@ -25,9 +25,17 @@ function LoginPage({ onLogin }) {
         password 
       });
       
-      localStorage.setItem('token', response.data.token);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
-      onLogin(response.data.user);
+      // Support both old backend (response.data.token) and new backend (response.data.data.token)
+      const token = response.data.token || response.data.data?.token;
+      const user = response.data.user || response.data.data;
+
+      if (!token || !user) {
+        throw new Error('Invalid response format from server');
+      }
+
+      localStorage.setItem('token', token);
+      localStorage.setItem('user', JSON.stringify(user));
+      onLogin(user);
     } catch (err) {
       setError(err.response?.data?.message || 'Login failed. Please try again.');
     } finally {
