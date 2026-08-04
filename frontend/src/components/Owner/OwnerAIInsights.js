@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import jsPDF from 'jspdf';
 import { Loader2, TrendingUp, AlertTriangle, FileText, Download } from 'lucide-react';
+import { API_BASE_URL } from '../../api/config';
 
 const OwnerAIInsights = ({ token }) => {
   const [insights, setInsights] = useState(null);
@@ -13,7 +14,7 @@ const OwnerAIInsights = ({ token }) => {
 
   const fetchInsights = async () => {
     try {
-      const res = await fetch('http://localhost:5000/api/ai/insights', {
+      const res = await fetch(`${API_BASE_URL}/ai/insights`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
@@ -28,7 +29,7 @@ const OwnerAIInsights = ({ token }) => {
   const handleDownloadReport = async () => {
     setGeneratingReport(true);
     try {
-      const res = await fetch('http://localhost:5000/api/ai/reports/monthly', {
+      const res = await fetch(`${API_BASE_URL}/ai/reports/monthly`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const report = await res.json();

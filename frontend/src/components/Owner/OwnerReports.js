@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { API_BASE_URL } from '../../api/config';
 
-const API_URL = (process.env.REACT_APP_API_URL || 'http://localhost:5000/api');
+const API_URL = API_BASE_URL;
 
 function OwnerReports({ token }) {
   const [activeReport, setActiveReport] = useState('revenue');

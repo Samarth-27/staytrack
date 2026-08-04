@@ -1,7 +1,5 @@
 import React, { useState } from 'react';
-import axios from 'axios';
-
-const API_URL = (process.env.REACT_APP_API_URL || 'http://localhost:5000/api');
+import api from '../../api/config';
 
 /**
  * LOGIN PAGE COMPONENT
@@ -20,24 +18,33 @@ function LoginPage({ onLogin }) {
     setLoading(true);
     
     try {
-      const response = await axios.post(`${API_URL}/auth/login`, { 
+      const response = await api.post('/auth/login', { 
         username, 
         password 
       });
       
       // Support both old backend (response.data.token) and new backend (response.data.data.token)
       const token = response.data.token || response.data.data?.token;
-      const user = response.data.user || response.data.data;
+      let user = response.data.user || response.data.data;
 
       if (!token || !user) {
         throw new Error('Invalid response format from server');
+      }
+
+      // Ensure role is normalized to lowercase for consistent frontend routing
+      if (user.role) {
+        user = { ...user, role: user.role.toLowerCase() };
       }
 
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(user));
       onLogin(user);
     } catch (err) {
-      setError(err.response?.data?.message || 'Login failed. Please try again.');
+      if (!err.response) {
+        setError('Cannot connect to backend server. Please ensure backend is running and REACT_APP_API_URL is configured.');
+      } else {
+        setError(err.response.data?.message || 'Login failed. Please try again.');
+      }
     } finally {
       setLoading(false);
     }

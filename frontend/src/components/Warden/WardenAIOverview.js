@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { BrainCircuit, Loader2, FileText, AlertTriangle, CheckCircle, TrendingUp, Sparkles, MessageSquare } from 'lucide-react';
+import { API_BASE_URL } from '../../api/config';
 
-const API_URL = (process.env.REACT_APP_API_URL || 'http://localhost:5000/api');
+const API_URL = API_BASE_URL;
 
 function WardenAIOverview({ token }) {
   const [complaints, setComplaints] = useState([]);

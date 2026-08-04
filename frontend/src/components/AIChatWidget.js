@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { MessageSquare, X, Send, Bot, User, Loader2 } from 'lucide-react';
+import { API_BASE_URL } from '../api/config';
 
 const AIChatWidget = ({ token }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -29,7 +30,7 @@ const AIChatWidget = ({ token }) => {
     setIsLoading(true);
 
     try {
-      const res = await fetch('http://localhost:5000/api/ai/chat', {
+      const res = await fetch(`${API_BASE_URL}/ai/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
