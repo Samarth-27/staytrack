@@ -14,6 +14,10 @@ function WardenStudents({ token }) {
   // New State variables for features
   const [selectedStudents, setSelectedStudents] = useState([]);
   const [showArchived, setShowArchived] = useState(false);
+  
+  const [modalState, setModalState] = useState({ isOpen: false, title: '', message: '', onConfirm: null, isAlert: false });
+  const showConfirm = (title, message, onConfirm) => setModalState({ isOpen: true, title, message, onConfirm, isAlert: false });
+  const showAlert = (title, message) => setModalState({ isOpen: true, title, message, onConfirm: null, isAlert: true });
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { fetchStudents(); }, []);
@@ -48,15 +52,16 @@ function WardenStudents({ token }) {
   };
 
   // Archive Student
-  const handleArchive = async (studentId) => {
-    if (!window.confirm("Are you sure you want to archive this student? Room will be freed.")) return;
-    try {
-      await axios.post(`${API_URL}/warden/archive-student/${studentId}`, { reason: 'Checkout' }, { headers: { Authorization: `Bearer ${token}` } });
-      showMessage('✓ Student archived successfully.', 'success');
-      fetchStudents();
-    } catch (error) {
-      showMessage('✗ Cannot archive: ' + (error.response?.data?.message || 'Error occurred.'), 'error');
-    }
+  const handleArchive = (studentId) => {
+    showConfirm("Archive Student", "Are you sure you want to archive this student? Room will be freed.", async () => {
+      try {
+        await axios.post(`${API_URL}/warden/archive-student/${studentId}`, { reason: 'Checkout' }, { headers: { Authorization: `Bearer ${token}` } });
+        showMessage('✓ Student archived successfully.', 'success');
+        fetchStudents();
+      } catch (error) {
+        showMessage('✗ Cannot archive: ' + (error.response?.data?.message || 'Error occurred.'), 'error');
+      }
+    });
   };
 
   // Reactivate Student
@@ -71,45 +76,45 @@ function WardenStudents({ token }) {
   };
 
   // Reset Individual Password
-  const handleResetPassword = async (studentId) => {
-    if (!window.confirm("Are you sure you want to reset this student's password?")) return;
-    try {
-      const res = await axios.put(`${API_URL}/warden/reset-password/${studentId}`, {}, { headers: { Authorization: `Bearer ${token}` } });
-      window.alert(`Password reset successful!\n\nUsername: ${res.data.credentials.username}\nNew Password: ${res.data.credentials.newPassword}\n\nPlease share this with the student safely.`);
-    } catch (error) {
-      showMessage('✗ Password reset failed.', 'error');
-    }
+  const handleResetPassword = (studentId) => {
+    showConfirm("Reset Password", "Are you sure you want to reset this student's password?", async () => {
+      try {
+        const res = await axios.put(`${API_URL}/warden/reset-password/${studentId}`, {}, { headers: { Authorization: `Bearer ${token}` } });
+        showAlert("Password Reset Successful", `Username: ${res.data.credentials.username}\nNew Password: ${res.data.credentials.newPassword}\n\nPlease share this with the student safely.`);
+      } catch (error) {
+        showMessage('✗ Password reset failed.', 'error');
+      }
+    });
   };
 
   // Bulk Reset Passwords
-  const handleBulkReset = async () => {
+  const handleBulkReset = () => {
     if (selectedStudents.length === 0) {
       return showMessage('Please select students first.', 'error');
     }
-    if (!window.confirm(`Reset passwords for ${selectedStudents.length} students?`)) return;
-
-    try {
-      const res = await axios.post(`${API_URL}/warden/bulk-reset-passwords`, 
-        { studentIds: selectedStudents }, 
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      
-      const creds = res.data.credentials.map(c => `${c.name} (${c.username}) - ${c.newPassword}`).join('\n');
-      console.log("New Credentials:\n" + creds);
-      
-      // Download as txt
-      const element = document.createElement("a");
-      const file = new Blob([creds], {type: 'text/plain'});
-      element.href = URL.createObjectURL(file);
-      element.download = "new_credentials.txt";
-      document.body.appendChild(element);
-      element.click();
-      
-      showMessage('✓ Bulk reset successful. Credentials downloaded.', 'success');
-      setSelectedStudents([]);
-    } catch (error) {
-      showMessage('✗ Bulk reset failed.', 'error');
-    }
+    showConfirm("Bulk Reset", `Reset passwords for ${selectedStudents.length} students?`, async () => {
+      try {
+        const res = await axios.post(`${API_URL}/warden/bulk-reset-passwords`, 
+          { studentIds: selectedStudents }, 
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        
+        const creds = res.data.credentials.map(c => `${c.name} (${c.username}) - ${c.newPassword}`).join('\n');
+        
+        // Download as txt
+        const element = document.createElement("a");
+        const file = new Blob([creds], {type: 'text/plain'});
+        element.href = URL.createObjectURL(file);
+        element.download = "new_credentials.txt";
+        document.body.appendChild(element);
+        element.click();
+        
+        showMessage('✓ Bulk reset successful. Credentials downloaded.', 'success');
+        setSelectedStudents([]);
+      } catch (error) {
+        showMessage('✗ Bulk reset failed.', 'error');
+      }
+    });
   };
 
   const toggleSelection = (id) => {
@@ -207,6 +212,22 @@ function WardenStudents({ token }) {
           )}
         </tbody>
       </table>
+      
+      {modalState.isOpen && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div style={{ background: 'var(--bg-surface, #fff)', padding: '20px', borderRadius: '8px', minWidth: '300px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
+            <h3 style={{ marginTop: 0, color: 'var(--text-primary, #000)' }}>{modalState.title}</h3>
+            <p style={{ color: 'var(--text-secondary, #666)', whiteSpace: 'pre-line' }}>{modalState.message}</p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '15px' }}>
+              {!modalState.isAlert && <button className="btn-secondary" onClick={() => setModalState({ ...modalState, isOpen: false })}>Cancel</button>}
+              <button className="btn-primary" onClick={() => {
+                if (modalState.onConfirm) modalState.onConfirm();
+                setModalState({ ...modalState, isOpen: false });
+              }}>{modalState.isAlert ? 'OK' : 'Confirm'}</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

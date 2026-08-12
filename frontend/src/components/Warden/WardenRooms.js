@@ -23,7 +23,7 @@ function WardenRooms({ token }) {
 
   if (loading) return <div className="loading">Loading rooms...</div>;
 
-  const occupiedCount = rooms.filter(r => r.status === 'occupied').length;
+  const occupiedCount = rooms.filter(r => r.students.length > 0).length;
 
   return (
     <div className="rooms-container">
@@ -48,8 +48,8 @@ function WardenRooms({ token }) {
               <tr key={room._id}>
                 <td><strong>Room {room.roomNumber}</strong></td>
                 <td>{room.capacity}</td>
-                <td>{room.students.length}/{room.capacity}</td>
-                <td><span className={`status ${room.status}`}>{room.status === 'occupied' ? '✓ Occupied' : '□ Vacant'}</span></td>
+                <td style={{ color: room.students.length > room.capacity ? 'red' : 'inherit', fontWeight: room.students.length > room.capacity ? 'bold' : 'normal' }}>{room.students.length}/{room.capacity} {room.students.length > room.capacity && '⚠️'}</td>
+                <td><span className={`status ${room.students.length > 0 ? (room.students.length >= room.capacity ? 'occupied' : 'partially-occupied') : 'vacant'}`}>{room.students.length > 0 ? (room.students.length >= room.capacity ? '✓ Occupied' : '◐ Partially Occupied') : '□ Vacant'}</span></td>
                 <td>{room.students.map(s => s.name).join(', ') || 'No students'}</td>
               </tr>
             ))

@@ -11,7 +11,15 @@ const aiLimiter = rateLimit({
   message: { message: 'Too many AI requests from this IP, please try again after 15 minutes.' }
 });
 
+const aiClientInstance = require('../utils/geminiClient');
 const router = express.Router();
+
+router.use((req, res, next) => {
+  if (!aiClientInstance) {
+    return res.status(503).json({ message: 'AI features are currently disabled because the server is missing the GEMINI_API_KEY configuration.' });
+  }
+  next();
+});
 
 /**
  * POST /api/ai/chat
