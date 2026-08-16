@@ -7,9 +7,11 @@ const paymentSchema = new mongoose.Schema({
   room: { type: mongoose.Schema.Types.ObjectId, ref: 'Room', required: false },
   
   // Amount Info
-  amount: { type: Number, default: 8500 }, // Total (e.g. 8500)
+  amount: { type: Number, default: 8500 }, // Total Base (e.g. 8500)
   onlineAmount: { type: Number, default: 0 },
   cashAmount: { type: Number, default: 0 },
+  penaltyAmount: { type: Number, default: 0 },
+  penaltyWaived: { type: Boolean, default: false },
   month: { type: String, required: true }, // Format: "2024-01"
   
   // Status

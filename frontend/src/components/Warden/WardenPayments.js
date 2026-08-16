@@ -44,6 +44,17 @@ function WardenPayments({ token }) {
     }
   };
 
+  const handleWaivePenalty = async (paymentId) => {
+    if (!window.confirm("Are you sure you want to waive the late fee penalty for this payment?")) return;
+    try {
+      await axios.put(`${API_URL}/warden/payment/${paymentId}/waive-penalty`, {}, { headers: { Authorization: `Bearer ${token}` } });
+      fetchPayments();
+    } catch (error) {
+      console.error('Error waiving penalty:', error);
+      alert('Failed to waive penalty: ' + (error.response?.data?.message || error.message));
+    }
+  };
+
   const downloadPDF = () => {
     const doc = new jsPDF();
     doc.text("Warden Payment Report", 14, 15);
@@ -125,7 +136,10 @@ function WardenPayments({ token }) {
                 <td>{payment.month}</td>
                 <td className="amount">₹{payment.onlineAmount || 0}</td>
                 <td className="amount">₹{payment.cashAmount || 0}</td>
-                <td className="amount"><strong>₹{payment.amount}</strong></td>
+                <td className="amount">
+                  <strong>₹{(payment.amount || 8500) + (payment.penaltyAmount || 0)}</strong>
+                  {payment.penaltyAmount > 0 && <div style={{fontSize:'12px', color:'red'}}>Inc. ₹{payment.penaltyAmount} Late Fee</div>}
+                </td>
                 <td>
                   {payment.hasScreenshot ? (
                     <div style={{display:'flex', flexDirection:'column', gap:'4px', fontSize: '12px'}}>
@@ -138,14 +152,21 @@ function WardenPayments({ token }) {
                 <td><span className={`status ${payment.status}`}>{payment.status === 'pending_verification' ? 'Reviewing' : payment.status}</span></td>
                 <td>
                   {(payment.status === 'pending' || payment.status === 'pending_verification') ? (
-                    <div style={{ display: 'flex', gap: '5px' }}>
-                      <button className="btn-small success" onClick={() => handleMarkPaid(payment._id)}>
-                        {payment.status === 'pending_verification' ? 'Approve' : 'Mark Paid'}
-                      </button>
-                      {payment.status === 'pending_verification' && (
-                        <button className="btn-small danger" onClick={() => handleRejectPayment(payment._id)}>
-                          Reject
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                      <div style={{ display: 'flex', gap: '5px' }}>
+                        <button className="btn-small success" onClick={() => handleMarkPaid(payment._id)}>
+                          {payment.status === 'pending_verification' ? 'Approve' : 'Mark Paid'}
                         </button>
+                        {payment.status === 'pending_verification' && (
+                          <button className="btn-small danger" onClick={() => handleRejectPayment(payment._id)}>
+                            Reject
+                          </button>
+                        )}
+                      </div>
+                      {payment.penaltyAmount > 0 && payment.status === 'pending' && (
+                         <button className="btn-small" style={{ backgroundColor: '#f39c12', color: '#fff', border: 'none' }} onClick={() => handleWaivePenalty(payment._id)}>
+                           Waive Penalty
+                         </button>
                       )}
                     </div>
                   ) : (

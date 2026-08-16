@@ -23,6 +23,26 @@ router.get('/students', verifyToken, checkRole(['warden']), async (req, res) => 
 });
 
 /**
+ * UPDATE STUDENT DETAILS
+ * Warden can update a student's basic details (e.g., name)
+ */
+router.put('/student/:id', verifyToken, checkRole(['warden']), async (req, res) => {
+  try {
+    const { name } = req.body;
+    const student = await User.findOneAndUpdate(
+      { _id: req.params.id, role: 'student' },
+      { name },
+      { new: true }
+    ).select('-password');
+    
+    if (!student) return res.status(404).json({ message: 'Student not found' });
+    res.json(student);
+  } catch (error) {
+    res.status(500).json({ message: 'Error updating student', error: error.message });
+  }
+});
+
+/**
  * ASSIGN STUDENT TO ROOM
  * Warden assigns student to room (max 2 per room)
  */
@@ -195,6 +215,26 @@ router.put('/payment/:id/reject', verifyToken, checkRole(['warden']), async (req
     res.json(payment);
   } catch (error) {
     res.status(500).json({ message: 'Error rejecting payment', error: error.message });
+  }
+});
+
+/**
+ * WAIVE LATE FEE PENALTY
+ * Warden removes the penalty amount for a student
+ */
+router.put('/payment/:id/waive-penalty', verifyToken, checkRole(['warden']), async (req, res) => {
+  try {
+    const payment = await Payment.findByIdAndUpdate(
+      req.params.id,
+      { 
+        penaltyAmount: 0,
+        penaltyWaived: true
+      },
+      { new: true }
+    );
+    res.json(payment);
+  } catch (error) {
+    res.status(500).json({ message: 'Error waiving penalty', error: error.message });
   }
 });
 

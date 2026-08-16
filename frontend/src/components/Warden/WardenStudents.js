@@ -19,8 +19,21 @@ function WardenStudents({ token }) {
   const showConfirm = (title, message, onConfirm) => setModalState({ isOpen: true, title, message, onConfirm, isAlert: false });
   const showAlert = (title, message) => setModalState({ isOpen: true, title, message, onConfirm: null, isAlert: true });
 
+  const [vacantRooms, setVacantRooms] = useState([]);
+  const [editingStudentId, setEditingStudentId] = useState(null);
+  const [editName, setEditName] = useState('');
+
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { fetchStudents(); }, []);
+  useEffect(() => { fetchStudents(); fetchRooms(); }, []);
+
+  const fetchRooms = async () => {
+    try {
+      const response = await axios.get(`${API_URL}/warden/rooms`, { headers: { Authorization: `Bearer ${token}` } });
+      setVacantRooms(response.data.filter(r => r.status === 'vacant'));
+    } catch (error) {
+      console.error('Error fetching rooms:', error);
+    }
+  };
 
   const fetchStudents = async () => {
     try {
@@ -123,7 +136,28 @@ function WardenStudents({ token }) {
     );
   };
 
+  const handleEditClick = (student) => {
+    setEditingStudentId(student._id);
+    setEditName(student.name);
+  };
+
+  const handleSaveName = async (studentId) => {
+    try {
+      await axios.put(`${API_URL}/warden/student/${studentId}`, { name: editName }, { headers: { Authorization: `Bearer ${token}` } });
+      setEditingStudentId(null);
+      fetchStudents();
+      showMessage('✓ Student name updated', 'success');
+    } catch (error) {
+      showMessage('✗ Error updating name', 'error');
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingStudentId(null);
+  };
+
   const filteredStudents = students.filter(s => showArchived ? s.status === 'archived' : s.status !== 'archived');
+
 
   if (loading) return <div className="loading">Loading students...</div>;
 
@@ -187,7 +221,12 @@ function WardenStudents({ token }) {
             </div>
             <div className="form-group">
               <label>Room Number</label>
-              <input type="number" value={newStudent.roomNumber} onChange={(e) => setNewStudent({...newStudent, roomNumber: parseInt(e.target.value)})} required />
+              <select value={newStudent.roomNumber} onChange={(e) => setNewStudent({...newStudent, roomNumber: e.target.value ? parseInt(e.target.value) : ''})} required>
+                <option value="" disabled>Select a vacant room</option>
+                {vacantRooms.map(r => (
+                  <option key={r._id} value={r.roomNumber}>Room {r.roomNumber} (Capacity: {r.capacity})</option>
+                ))}
+              </select>
             </div>
           </div>
           <button type="submit" className="btn-success" style={{ marginTop: '15px' }}>Create Student</button>
@@ -212,7 +251,22 @@ function WardenStudents({ token }) {
             filteredStudents.map(student => (
               <tr key={student._id} style={{ borderBottom: '1px solid #ddd' }}>
                 {!showArchived && <td><input type="checkbox" checked={selectedStudents.includes(student._id)} onChange={() => toggleSelection(student._id)} /></td>}
-                <td>{student.name}</td>
+                <td>
+                  {editingStudentId === student._id ? (
+                    <div style={{display:'flex', gap:'5px', alignItems:'center'}}>
+                      <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} style={{padding:'4px', width:'120px'}} />
+                      <button className="btn-small success" onClick={() => handleSaveName(student._id)} title="Save Name">💾</button>
+                      <button className="btn-small danger" onClick={handleCancelEdit} title="Cancel">✕</button>
+                    </div>
+                  ) : (
+                    <div style={{display:'flex', gap:'5px', alignItems:'center'}}>
+                      {student.name}
+                      {student.status !== 'archived' && (
+                        <button style={{background:'none', border:'none', cursor:'pointer', fontSize:'14px', marginLeft:'5px'}} onClick={() => handleEditClick(student)} title="Edit Name">✏️</button>
+                      )}
+                    </div>
+                  )}
+                </td>
                 <td>{student.username}</td>
                 <td>{student.roomNumber ? `Room ${student.roomNumber}` : 'Unassigned'}</td>
                 <td><span className={`badge ${student.status === 'archived' ? 'archived' : 'active'}`}>{student.status === 'archived' ? 'Archived' : 'Active'}</span></td>

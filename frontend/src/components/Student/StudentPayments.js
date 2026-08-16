@@ -13,10 +13,27 @@ function StudentPayments({ token }) {
     messTransactionId: '',
     messScreenshotUrl: '',
     rentTransactionId: '',
-    rentScreenshotUrl: ''
+    rentScreenshotUrl: '',
+    penaltyAmount: 0
   });
   const [messMode, setMessMode] = useState('');
   const [rentMode, setRentMode] = useState('');
+
+  const today = new Date();
+  const dayOfMonth = today.getDate();
+  const showWarning = dayOfMonth >= 5 && dayOfMonth <= 8;
+
+  const handlePayNow = (payment) => {
+    setForm({
+      month: payment.month,
+      messTransactionId: '',
+      messScreenshotUrl: '',
+      rentTransactionId: '',
+      rentScreenshotUrl: '',
+      penaltyAmount: payment.penaltyAmount || 0
+    });
+    setShowForm(true);
+  };
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
@@ -96,8 +113,9 @@ function StudentPayments({ token }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const onlineAmount = (messMode === 'online' ? 5000 : 0) + (rentMode === 'online' ? 3500 : 0);
-    const cashAmount = (messMode === 'cash' ? 5000 : 0) + (rentMode === 'cash' ? 3500 : 0);
+    const penalty = form.penaltyAmount || 0;
+    const onlineAmount = (messMode === 'online' ? 5000 : 0) + (rentMode === 'online' ? 3500 + penalty : 0);
+    const cashAmount = (messMode === 'cash' ? 5000 : 0) + (rentMode === 'cash' ? 3500 + penalty : 0);
     
     try {
       await axios.post(`${API_URL}/student/payment`, { 
@@ -138,6 +156,12 @@ function StudentPayments({ token }) {
         </button>
       </div>
 
+      {showWarning && (
+        <div style={{ background: '#fff3cd', color: '#856404', padding: '15px', borderRadius: '8px', marginBottom: '20px', border: '1px solid #ffeeba' }}>
+          <strong>⚠️ Warning:</strong> Please submit your current month's fee by the 8th. A ₹100 penalty will be applied to late payments starting from the 9th.
+        </div>
+      )}
+
       {showForm && (
         <form className="form-card" onSubmit={handleSubmit} style={{ background: 'var(--bg-surface)', padding: '20px', borderRadius: '8px', marginBottom: '20px' }}>
           <h3>Submit Payment Details</h3>
@@ -162,7 +186,7 @@ function StudentPayments({ token }) {
               </select>
             </div>
             <div className="form-group">
-              <label>Room Rent (₹3500)</label>
+              <label>Room Rent (₹3500) {form.penaltyAmount > 0 && <span style={{color: 'red'}}>+ ₹{form.penaltyAmount} Late Fee</span>}</label>
               <select value={rentMode} onChange={(e) => setRentMode(e.target.value)} required>
                 <option value="" disabled>Select payment method</option>
                 <option value="online">Pay Online</option>
@@ -267,7 +291,10 @@ function StudentPayments({ token }) {
                   <td>{payment.month}</td>
                   <td>₹{payment.onlineAmount || 0}</td>
                   <td>₹{payment.cashAmount || 0}</td>
-                  <td className="amount"><strong>₹{payment.amount}</strong></td>
+                  <td className="amount">
+                    <strong>₹{(payment.amount || 8500) + (payment.penaltyAmount || 0)}</strong>
+                    {payment.penaltyAmount > 0 && <div style={{fontSize:'12px', color:'red'}}>Inc. ₹{payment.penaltyAmount} Late Fee</div>}
+                  </td>
                   <td><span className={`status ${payment.status}`}>{payment.status === 'pending' ? 'Pending' : payment.status === 'pending_verification' ? '🔍 Under Review' : '✓ Paid'}</span></td>
                   <td>{payment.paidDate ? new Date(payment.paidDate).toLocaleDateString() : '-'}</td>
                   <td>
@@ -281,7 +308,7 @@ function StudentPayments({ token }) {
                   </td>
                   <td>
                     {payment.status === 'pending' ? (
-                      <button className="btn-small" onClick={() => setShowForm(true)}>Pay Now</button>
+                      <button className="btn-small" onClick={() => handlePayNow(payment)}>Pay Now</button>
                     ) : payment.status === 'pending_verification' ? (
                       <span className="pending">Under Review</span>
                     ) : (

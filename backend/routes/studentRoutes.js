@@ -184,6 +184,7 @@ router.get('/payments', verifyToken, checkRole(['student']), async (req, res) =>
     const payments = await Payment.find({ student: req.user.userId })
       .select('-screenshotUrl')
       .sort({ createdAt: -1 });
+
     res.json(payments);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching payments', error: error.message });
