@@ -5,8 +5,31 @@ const User = require('../models/User');
 const Room = require('../models/Room');
 const Payment = require('../models/Payment');
 const Complaint = require('../models/Complaint');
+const { generateMissingPayments } = require('../utils/paymentGenerator');
 
 const router = express.Router();
+
+/**
+ * UPDATE PRESENCE STATUS
+ * Student can mark if they are in the hostel or at home
+ */
+router.put('/presence', verifyToken, checkRole(['student']), async (req, res) => {
+  try {
+    const { presenceStatus } = req.body;
+    if (!['in_hostel', 'on_leave'].includes(presenceStatus)) {
+      return res.status(400).json({ message: 'Invalid presence status' });
+    }
+    
+    const student = await User.findByIdAndUpdate(
+      req.user.userId,
+      { presenceStatus },
+      { new: true }
+    );
+    res.json({ message: 'Presence status updated', presenceStatus: student.presenceStatus });
+  } catch (error) {
+    res.status(500).json({ message: 'Error updating presence status', error: error.message });
+  }
+});
 
 /**
  * GET STUDENT PROFILE
@@ -74,54 +97,74 @@ router.get('/complaints', verifyToken, checkRole(['student']), async (req, res) 
  */
 router.post('/payment', verifyToken, checkRole(['student']), async (req, res) => {
   try {
-    const { month, transactionId, onlineAmount, cashAmount, screenshotUrl } = req.body;
+    const { month, messMode, rentMode, messTransactionId, messScreenshotUrl, rentTransactionId, rentScreenshotUrl, screenshotUrl } = req.body;
+
+    const monthRegex = /^\d{4}-\d{2}$/;
+    if (!month || !monthRegex.test(month)) {
+      return res.status(400).json({ message: 'Invalid month format. Use YYYY-MM' });
+    }
+
+    const currentMonthStr = new Date().toISOString().slice(0, 7);
+    if (month > currentMonthStr) {
+      return res.status(400).json({ message: 'Cannot submit payments for future months' });
+    }
     
-    if (Number(onlineAmount) > 0 && !transactionId && !screenshotUrl) {
-      return res.status(400).json({ message: 'Transaction ID or screenshot is required for online payments' });
+    if (messMode === 'online' && !messTransactionId && !messScreenshotUrl) {
+      return res.status(400).json({ message: 'Transaction ID or screenshot is required for online mess payment' });
+    }
+    if (rentMode === 'online' && !rentTransactionId && !rentScreenshotUrl) {
+      return res.status(400).json({ message: 'Transaction ID or screenshot is required for online rent payment' });
     }
 
     const student = await User.findById(req.user.userId);
-    
     let room = null;
     if (student.roomNumber) {
       room = await Room.findOne({ roomNumber: student.roomNumber });
     }
-
-    // Ensure room exists, otherwise just omit room or fail
     const roomId = room ? room._id : null;
 
-    // Try to find existing payment for this month, otherwise create one
     let payment = await Payment.findOne({ student: req.user.userId, month });
     
+    const onlineAmount = (messMode === 'online' ? 5000 : 0) + (rentMode === 'online' ? 3500 : 0);
+    const cashAmount = (messMode === 'cash' ? 5000 : 0) + (rentMode === 'cash' ? 3500 : 0);
+    const hasScreenshot = !!(messScreenshotUrl || rentScreenshotUrl);
+
     if (payment) {
-      payment.status = 'pending_verification'; // Changed from 'paid' to require Warden approval
-      payment.transactionId = transactionId;
-      payment.onlineAmount = onlineAmount || 0;
-      payment.cashAmount = cashAmount || 0;
-      payment.amount = (Number(onlineAmount) || 0) + (Number(cashAmount) || 0);
-      payment.screenshotUrl = screenshotUrl;
-      payment.hasScreenshot = !!screenshotUrl;
+      if (payment.status === 'paid') {
+        return res.status(400).json({ message: 'Payment for this month has already been verified and paid.' });
+      }
+      payment.status = 'pending_verification';
+      payment.messTransactionId = messTransactionId;
+      payment.messScreenshotUrl = messScreenshotUrl;
+      payment.rentTransactionId = rentTransactionId;
+      payment.rentScreenshotUrl = rentScreenshotUrl;
+      payment.onlineAmount = onlineAmount;
+      payment.cashAmount = cashAmount;
+      payment.amount = onlineAmount + cashAmount;
+      payment.hasScreenshot = hasScreenshot;
       await payment.save();
     } else {
       payment = new Payment({
         student: req.user.userId,
         room: roomId,
         month,
-        status: 'pending_verification', // Require Warden approval
-        transactionId,
-        onlineAmount: onlineAmount || 0,
-        cashAmount: cashAmount || 0,
-        amount: (Number(onlineAmount) || 0) + (Number(cashAmount) || 0),
-        screenshotUrl,
-        hasScreenshot: !!screenshotUrl
+        status: 'pending_verification',
+        messTransactionId,
+        messScreenshotUrl,
+        rentTransactionId,
+        rentScreenshotUrl,
+        onlineAmount,
+        cashAmount,
+        amount: onlineAmount + cashAmount,
+        hasScreenshot
       });
       await payment.save();
     }
 
-    // Trigger AI OCR asynchronously if a screenshot was provided
-    if (screenshotUrl) {
+    const ocrUrl = messScreenshotUrl || rentScreenshotUrl || screenshotUrl;
+    if (ocrUrl) {
       const processReceiptOCR = require('../utils/aiOcrService');
-      processReceiptOCR(payment._id, screenshotUrl).catch(err => console.error('AI OCR trigger error:', err));
+      processReceiptOCR(payment._id, ocrUrl).catch(err => console.error('AI OCR trigger error:', err));
     }
 
     res.json({ message: 'Payment recorded', payment });
@@ -136,27 +179,7 @@ router.post('/payment', verifyToken, checkRole(['student']), async (req, res) =>
  */
 router.get('/payments', verifyToken, checkRole(['student']), async (req, res) => {
   try {
-    // Auto-generate missing payments from student's joined month up to current month
-    const student = await User.findById(req.user.userId);
-    const room = student.roomNumber ? await Room.findOne({ roomNumber: student.roomNumber }) : null;
-    
-    let current = new Date(student.createdAt);
-    current.setDate(1); // Start of month
-    const now = new Date();
-    
-    while (current <= now) {
-      const monthStr = current.toISOString().slice(0, 7);
-      const existing = await Payment.findOne({ student: student._id, month: monthStr });
-      if (!existing) {
-        await new Payment({
-          student: student._id,
-          room: room ? room._id : null,
-          month: monthStr,
-          status: 'pending'
-        }).save();
-      }
-      current.setMonth(current.getMonth() + 1);
-    }
+    await generateMissingPayments();
 
     const payments = await Payment.find({ student: req.user.userId })
       .select('-screenshotUrl')

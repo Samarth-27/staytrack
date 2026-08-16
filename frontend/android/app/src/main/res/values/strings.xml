@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">StayTrack</string>
+    <string name="title_activity_main">StayTrack</string>
+    <string name="package_name">com.sanmatibhavan.staytrack</string>
+    <string name="custom_url_scheme">com.sanmatibhavan.staytrack</string>
+</resources>

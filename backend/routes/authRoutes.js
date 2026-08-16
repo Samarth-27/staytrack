@@ -3,6 +3,7 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
+const { verifyToken, checkRole } = require('../middleware/auth');
 const router = express.Router();
 
 /**
@@ -52,7 +53,7 @@ router.post('/login', async (req, res) => {
  * REGISTER ROUTE
  * Creates new user account (student/warden/owner)
  */
-router.post('/register', async (req, res) => {
+router.post('/register', verifyToken, checkRole(['warden', 'owner']), async (req, res) => {
   try {
     const { name, username, password, role, phone, roomNumber } = req.body;
 
@@ -131,7 +132,6 @@ router.post('/init', async (req, res) => {
  * CHANGE PASSWORD
  * Allows any logged-in user to change their password safely
  */
-const { verifyToken } = require('../middleware/auth');
 router.put('/change-password', verifyToken, async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;

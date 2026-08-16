@@ -85,7 +85,7 @@ function WardenPayments({ token }) {
 
   const totalAmount = payments.reduce((sum, p) => sum + p.amount, 0);
   const paidAmount = payments.filter(p => p.status === 'paid').reduce((sum, p) => sum + p.amount, 0);
-  const pendingAmount = payments.filter(p => p.status === 'pending').reduce((sum, p) => sum + p.amount, 0);
+  const pendingAmount = payments.filter(p => p.status === 'pending' || p.status === 'pending_verification').reduce((sum, p) => sum + p.amount, 0);
 
   return (
     <div className="payments-container">
@@ -128,7 +128,11 @@ function WardenPayments({ token }) {
                 <td className="amount"><strong>₹{payment.amount}</strong></td>
                 <td>
                   {payment.hasScreenshot ? (
-                    <a href={`${API_URL}/payment/${payment._id}/screenshot`} target="_blank" rel="noreferrer" style={{ fontSize: '12px' }}>View</a>
+                    <div style={{display:'flex', flexDirection:'column', gap:'4px', fontSize: '12px'}}>
+                      {payment.messScreenshotUrl && <a href={`${API_URL}/payment/${payment._id}/screenshot?type=mess`} target="_blank" rel="noreferrer" download="Mess_Proof.jpg" style={{ color: '#3498db' }}>📄 Mess Proof</a>}
+                      {payment.rentScreenshotUrl && <a href={`${API_URL}/payment/${payment._id}/screenshot?type=rent`} target="_blank" rel="noreferrer" download="Rent_Proof.jpg" style={{ color: '#3498db' }}>📄 Rent Proof</a>}
+                      {(!payment.messScreenshotUrl && !payment.rentScreenshotUrl && payment.screenshotUrl) && <a href={`${API_URL}/payment/${payment._id}/screenshot`} target="_blank" rel="noreferrer" download="Payment_Proof.jpg" style={{ color: '#3498db' }}>📄 View Proof</a>}
+                    </div>
                   ) : '-'}
                 </td>
                 <td><span className={`status ${payment.status}`}>{payment.status === 'pending_verification' ? 'Reviewing' : payment.status}</span></td>

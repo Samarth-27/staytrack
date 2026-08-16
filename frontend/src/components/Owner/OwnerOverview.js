@@ -38,6 +38,11 @@ function OwnerOverview({ token }) {
           <h3>Total Students</h3>
           <p className="stat-value">{dashboard.totalStudents}</p>
         </div>
+        <div className="stat-card" style={{ background: 'var(--bg-hover)', borderColor: 'var(--success)' }}>
+          <div className="stat-icon">🍔</div>
+          <h3>Students in Mess</h3>
+          <p className="stat-value" style={{ color: 'var(--success)' }}>{dashboard.studentsInMess}</p>
+        </div>
         <div className="stat-card">
           <div className="stat-icon"></div>
           <h3>Total Rooms</h3>

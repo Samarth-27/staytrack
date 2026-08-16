@@ -68,9 +68,40 @@ const executeTool = async (toolName, args, user) => {
 
       case 'allocateRoom':
         if (userRole !== 'warden') return { error: 'Unauthorized.' };
-        const targetRoom = await Room.findOne({ roomNumber: args.roomNumber });
-        if (!targetRoom) return { error: 'Room does not exist.' };
+        
+        const targetStudent = await User.findById(args.studentId);
+        if (!targetStudent) return { error: 'Student not found.' };
+        const oldRoomNumber = targetStudent.roomNumber;
+
+        let targetRoom = await Room.findOne({ roomNumber: args.roomNumber });
+        if (!targetRoom) {
+          targetRoom = new Room({ roomNumber: args.roomNumber });
+        }
+
+        const occupantsCount = await User.countDocuments({ roomNumber: args.roomNumber, status: { $ne: 'archived' } });
+        if (occupantsCount >= targetRoom.capacity) {
+          return { error: 'Room is full.' };
+        }
+
+        if (occupantsCount + 1 >= targetRoom.capacity) {
+          targetRoom.status = 'occupied';
+        } else {
+          targetRoom.status = 'vacant';
+        }
+        await targetRoom.save();
+
         await User.findByIdAndUpdate(args.studentId, { roomNumber: args.roomNumber });
+
+        // Update old room status if they were moved
+        if (oldRoomNumber && oldRoomNumber !== args.roomNumber) {
+          const oldRoom = await Room.findOne({ roomNumber: oldRoomNumber });
+          if (oldRoom) {
+            const oldOccupants = await User.countDocuments({ roomNumber: oldRoomNumber, status: { $ne: 'archived' } });
+            oldRoom.status = oldOccupants >= oldRoom.capacity ? 'occupied' : 'vacant';
+            await oldRoom.save();
+          }
+        }
+
         return { success: true, message: `Student allocated to Room ${args.roomNumber}` };
 
       case 'getPendingPayments':

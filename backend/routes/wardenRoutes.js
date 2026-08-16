@@ -5,6 +5,7 @@ const User = require('../models/User');
 const Room = require('../models/Room');
 const Payment = require('../models/Payment');
 const Complaint = require('../models/Complaint');
+const { generateMissingPayments } = require('../utils/paymentGenerator');
 
 const router = express.Router();
 
@@ -29,6 +30,11 @@ router.post('/assign-room', verifyToken, checkRole(['warden']), async (req, res)
   try {
     const { studentId, roomNumber } = req.body;
 
+    const student = await User.findById(studentId);
+    if (!student) return res.status(404).json({ message: 'Student not found' });
+    
+    const oldRoomNumber = student.roomNumber;
+
     let room = await Room.findOne({ roomNumber });
     if (!room) {
       room = new Room({ roomNumber });
@@ -49,6 +55,16 @@ router.post('/assign-room', verifyToken, checkRole(['warden']), async (req, res)
     await room.save();
 
     await User.findByIdAndUpdate(studentId, { roomNumber });
+
+    // Update old room status if they were moved
+    if (oldRoomNumber && oldRoomNumber !== roomNumber) {
+      const oldRoom = await Room.findOne({ roomNumber: oldRoomNumber });
+      if (oldRoom) {
+        const oldOccupants = await User.countDocuments({ roomNumber: oldRoomNumber, status: { $ne: 'archived' } });
+        oldRoom.status = oldOccupants >= oldRoom.capacity ? 'occupied' : 'vacant';
+        await oldRoom.save();
+      }
+    }
 
     res.json({ message: 'Student assigned to room', room });
   } catch (error) {
@@ -120,6 +136,7 @@ router.put('/complaint/:id', verifyToken, checkRole(['warden']), async (req, res
  */
 router.get('/payments', verifyToken, checkRole(['warden']), async (req, res) => {
   try {
+    await generateMissingPayments();
     const payments = await Payment.find()
       .populate('student', 'name roomNumber')
       .populate('room', 'roomNumber')
@@ -137,9 +154,17 @@ router.get('/payments', verifyToken, checkRole(['warden']), async (req, res) => 
  */
 router.put('/payment/:id', verifyToken, checkRole(['warden']), async (req, res) => {
   try {
+    const existingPayment = await Payment.findById(req.params.id);
+    let updateFields = { status: 'paid', paidDate: Date.now() };
+    
+    // If it was a manual mark-paid from pending (meaning physical cash), assign full amount to cash
+    if (existingPayment.status === 'pending' && existingPayment.onlineAmount === 0 && existingPayment.cashAmount === 0) {
+      updateFields.cashAmount = existingPayment.amount || 8500;
+    }
+
     const payment = await Payment.findByIdAndUpdate(
       req.params.id,
-      { status: 'paid', paidDate: Date.now() },
+      updateFields,
       { new: true }
     );
     res.json(payment);
@@ -160,7 +185,10 @@ router.put('/payment/:id/reject', verifyToken, checkRole(['warden']), async (req
         status: 'pending', 
         screenshotUrl: null, 
         hasScreenshot: false, 
-        transactionId: null 
+        transactionId: null,
+        onlineAmount: 0,
+        cashAmount: 0,
+        amount: 8500
       },
       { new: true }
     );

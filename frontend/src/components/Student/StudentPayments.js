@@ -10,11 +10,13 @@ function StudentPayments({ token }) {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({
     month: new Date().toISOString().slice(0, 7),
-    transactionId: '',
-    onlineAmount: 3500,
-    cashAmount: 5000,
-    screenshotUrl: ''
+    messTransactionId: '',
+    messScreenshotUrl: '',
+    rentTransactionId: '',
+    rentScreenshotUrl: ''
   });
+  const [messMode, setMessMode] = useState('');
+  const [rentMode, setRentMode] = useState('');
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
@@ -66,25 +68,50 @@ function StudentPayments({ token }) {
     });
   };
 
-  const handleFileChange = async (e) => {
+  const handleMessFileChange = async (e) => {
     const file = e.target.files[0];
     if (file) {
       try {
         const compressedBase64 = await compressImage(file);
-        setForm(prev => ({ ...prev, screenshotUrl: compressedBase64 }));
+        setForm({ ...form, messScreenshotUrl: compressedBase64 });
       } catch (err) {
         console.error("Error compressing image", err);
       }
     }
   };
 
+  const handleRentFileChange = async (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      try {
+        const compressedBase64 = await compressImage(file);
+        setForm({ ...form, rentScreenshotUrl: compressedBase64 });
+      } catch (err) {
+        console.error("Error compressing image", err);
+      }
+    }
+  };
+
+
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const onlineAmount = (messMode === 'online' ? 5000 : 0) + (rentMode === 'online' ? 3500 : 0);
+    const cashAmount = (messMode === 'cash' ? 5000 : 0) + (rentMode === 'cash' ? 3500 : 0);
+    
     try {
-      await axios.post(`${API_URL}/student/payment`, form, {
+      await axios.post(`${API_URL}/student/payment`, { 
+        ...form, 
+        onlineAmount, 
+        cashAmount, 
+        messMode, 
+        rentMode 
+      }, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setForm({ month: new Date().toISOString().slice(0, 7), transactionId: '', onlineAmount: 3500, cashAmount: 5000, screenshotUrl: '' });
+      setForm({ month: new Date().toISOString().slice(0, 7), messTransactionId: '', messScreenshotUrl: '', rentTransactionId: '', rentScreenshotUrl: '' });
+      setMessMode('');
+      setRentMode('');
       setShowForm(false);
       fetchPayments();
     } catch (error) {
@@ -107,7 +134,7 @@ function StudentPayments({ token }) {
 
       <div style={{ margin: '20px 0' }}>
         <button className="btn-primary" onClick={() => setShowForm(!showForm)}>
-          {showForm ? '✕ Cancel Payment' : '➕ Make New Payment / Split Payment'}
+          {showForm ? '✕ Cancel Payment' : '➕ Make New Payment'}
         </button>
       </div>
 
@@ -115,64 +142,105 @@ function StudentPayments({ token }) {
         <form className="form-card" onSubmit={handleSubmit} style={{ background: 'var(--bg-surface)', padding: '20px', borderRadius: '8px', marginBottom: '20px' }}>
           <h3>Submit Payment Details</h3>
           
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
-            <div className="form-group">
-              <label>Payment Month</label>
-              <input
-                type="month"
-                value={form.month}
-                onChange={(e) => setForm({ ...form, month: e.target.value })}
-                required
-              />
-            </div>
-            
-            <div className="form-group">
-              <label>Online Amount (₹)</label>
-              <input
-                type="number"
-                value={form.onlineAmount}
-                onChange={(e) => setForm({ ...form, onlineAmount: parseInt(e.target.value) || 0 })}
-                required
-              />
-            </div>
-
-            <div className="form-group">
-              <label>Cash to Warden (₹)</label>
-              <input
-                type="number"
-                value={form.cashAmount}
-                onChange={(e) => setForm({ ...form, cashAmount: parseInt(e.target.value) || 0 })}
-                required
-              />
-            </div>
-
-            <div className="form-group">
-              <label>Transaction ID (For Online)</label>
-              <input
-                type="text"
-                value={form.transactionId}
-                onChange={(e) => setForm({ ...form, transactionId: e.target.value })}
-                placeholder="E.g., TXN123456789"
-              />
-            </div>
-
-            <div className="form-group" style={{ gridColumn: '1 / span 2' }}>
-              <label>Upload Screenshot of Online Payment</label>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleFileChange}
-              />
-              {form.screenshotUrl && (
-                <div style={{ marginTop: '10px' }}>
-                  <img src={form.screenshotUrl} alt="Screenshot Preview" style={{ maxWidth: '200px', borderRadius: '8px', border: '1px solid #ccc' }} />
-                </div>
-              )}
-            </div>
+          <div className="form-group">
+            <label>Payment Month</label>
+            <input
+              type="month"
+              value={form.month}
+              onChange={(e) => setForm({ ...form, month: e.target.value })}
+              required
+            />
           </div>
 
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '24px' }}>
+            <div className="form-group">
+              <label>Mess Fee (₹5000)</label>
+              <select value={messMode} onChange={(e) => setMessMode(e.target.value)} required>
+                <option value="" disabled>Select payment method</option>
+                <option value="online">Pay Online</option>
+                <option value="cash">Pay Cash (To Warden)</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label>Room Rent (₹3500)</label>
+              <select value={rentMode} onChange={(e) => setRentMode(e.target.value)} required>
+                <option value="" disabled>Select payment method</option>
+                <option value="online">Pay Online</option>
+                <option value="cash">Pay Cash (To Warden)</option>
+              </select>
+            </div>
+          </div>
+          
+          {messMode === 'online' && (
+            <div style={{ padding: '20px', background: 'var(--bg-base)', borderRadius: '8px', border: '1px solid var(--border-strong)', marginBottom: '20px' }}>
+              <h4 style={{ marginBottom: '16px', color: 'var(--warning)' }}>Mess Fee - Online Proof</h4>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '15px' }}>
+                <div className="form-group">
+                  <label>Transaction ID</label>
+                  <input
+                    type="text"
+                    value={form.messTransactionId}
+                    onChange={(e) => setForm({ ...form, messTransactionId: e.target.value })}
+                    placeholder="E.g., TXN123456789"
+                    required={true}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Upload Screenshot</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleMessFileChange}
+                    required={!form.messScreenshotUrl}
+                  />
+                  {form.messScreenshotUrl && (
+                    <div style={{ marginTop: '10px' }}>
+                      <img src={form.messScreenshotUrl} alt="Screenshot Preview" style={{ maxWidth: '200px', borderRadius: '8px', border: '1px solid var(--border-dim)' }} />
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {rentMode === 'online' && (
+            <div style={{ padding: '20px', background: 'var(--bg-base)', borderRadius: '8px', border: '1px solid var(--border-strong)', marginBottom: '20px' }}>
+              <h4 style={{ marginBottom: '16px', color: 'var(--info)' }}>Room Rent - Online Proof</h4>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '15px' }}>
+                <div className="form-group">
+                  <label>Transaction ID</label>
+                  <input
+                    type="text"
+                    value={form.rentTransactionId}
+                    onChange={(e) => setForm({ ...form, rentTransactionId: e.target.value })}
+                    placeholder="E.g., TXN123456789"
+                    required={true}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Upload Screenshot</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleRentFileChange}
+                    required={!form.rentScreenshotUrl}
+                  />
+                  {form.rentScreenshotUrl && (
+                    <div style={{ marginTop: '10px' }}>
+                      <img src={form.rentScreenshotUrl} alt="Screenshot Preview" style={{ maxWidth: '200px', borderRadius: '8px', border: '1px solid var(--border-dim)' }} />
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           <div style={{ marginTop: '20px' }}>
-            <button type="submit" className="btn-success">Confirm Payment</button>
+            <button type="submit" className="btn-success" disabled={!messMode || !rentMode}>
+              Confirm Payment
+            </button>
           </div>
         </form>
       )}
@@ -204,7 +272,11 @@ function StudentPayments({ token }) {
                   <td>{payment.paidDate ? new Date(payment.paidDate).toLocaleDateString() : '-'}</td>
                   <td>
                     {payment.hasScreenshot ? (
-                      <a href={`${API_URL}/payment/${payment._id}/screenshot`} target="_blank" rel="noreferrer" style={{ color: '#3498db', textDecoration: 'underline' }}>View Screenshot</a>
+                      <div style={{display:'flex', flexDirection:'column', gap:'4px', fontSize: '12px'}}>
+                        {payment.messScreenshotUrl && <a href={`${API_URL}/payment/${payment._id}/screenshot?type=mess`} target="_blank" rel="noreferrer" style={{ color: '#3498db', textDecoration: 'underline' }}>Mess Proof</a>}
+                        {payment.rentScreenshotUrl && <a href={`${API_URL}/payment/${payment._id}/screenshot?type=rent`} target="_blank" rel="noreferrer" style={{ color: '#3498db', textDecoration: 'underline' }}>Rent Proof</a>}
+                        {(!payment.messScreenshotUrl && !payment.rentScreenshotUrl && payment.screenshotUrl) && <a href={`${API_URL}/payment/${payment._id}/screenshot`} target="_blank" rel="noreferrer" style={{ color: '#3498db', textDecoration: 'underline' }}>View Proof</a>}
+                      </div>
                     ) : 'No Proof'}
                   </td>
                   <td>

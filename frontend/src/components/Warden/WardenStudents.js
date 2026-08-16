@@ -127,8 +127,29 @@ function WardenStudents({ token }) {
 
   if (loading) return <div className="loading">Loading students...</div>;
 
+  const activeStudents = students.filter(s => s.status !== 'archived');
+  const inMessCount = activeStudents.filter(s => s.presenceStatus !== 'on_leave').length;
+
   return (
     <div className="students-container">
+      {!showArchived && (
+        <div className="summary-cards" style={{ marginBottom: '24px' }}>
+          <div className="card">
+            <h4>Total Active Students</h4>
+            <p className="amount">{activeStudents.length}</p>
+          </div>
+          <div className="card" style={{ background: 'var(--bg-hover)', borderColor: 'var(--success)' }}>
+            <h4>🍔 Students in Mess</h4>
+            <p className="amount" style={{ color: 'var(--success)' }}>{inMessCount}</p>
+            <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Currently marked as "In Hostel"</p>
+          </div>
+          <div className="card" style={{ borderColor: 'var(--warning)' }}>
+            <h4>🔴 Students on Leave</h4>
+            <p className="amount" style={{ color: 'var(--warning)' }}>{activeStudents.length - inMessCount}</p>
+          </div>
+        </div>
+      )}
+
       <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h2>Student Management</h2>
         <div style={{ display: 'flex', gap: '10px' }}>

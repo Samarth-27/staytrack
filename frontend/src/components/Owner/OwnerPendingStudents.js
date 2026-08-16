@@ -42,8 +42,8 @@ function OwnerPendingStudents({ token }) {
             <th>Student Name</th>
             <th>Room</th>
             <th>Phone</th>
-            <th>Pending Amount</th>
             <th>Month</th>
+            <th>Pending Amount</th>
           </tr>
         </thead>
         <tbody>
@@ -53,8 +53,8 @@ function OwnerPendingStudents({ token }) {
                 <td>{payment.student?.name || 'Unknown Student'}</td>
                 <td>Room {payment.room?.roomNumber || 'Unassigned'}</td>
                 <td><a href={`tel:${payment.student?.phone}`}>{payment.student?.phone || '-'}</a></td>
-                <td className="amount">₹{payment.amount}</td>
                 <td>{payment.month}</td>
+                <td className="amount">₹{payment.amount}</td>
               </tr>
             ))
           ) : (

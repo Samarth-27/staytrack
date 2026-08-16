@@ -217,13 +217,26 @@ module.exports = router;
 router.get('/payment/:id/screenshot', async (req, res) => {
   try {
     const payment = await Payment.findById(req.params.id);
-    if (!payment || !payment.screenshotUrl) {
+    if (!payment) return res.status(404).send('Payment not found.');
+
+    const { type } = req.query; // ?type=mess or ?type=rent
+    let targetScreenshot = payment.screenshotUrl; // fallback
+
+    if (type === 'mess' && payment.messScreenshotUrl) {
+      targetScreenshot = payment.messScreenshotUrl;
+    } else if (type === 'rent' && payment.rentScreenshotUrl) {
+      targetScreenshot = payment.rentScreenshotUrl;
+    } else if (!type) {
+      targetScreenshot = payment.messScreenshotUrl || payment.rentScreenshotUrl || payment.screenshotUrl;
+    }
+
+    if (!targetScreenshot) {
       return res.status(404).send('No screenshot available for this payment.');
     }
     
     // Check if it's a base64 image
-    if (payment.screenshotUrl.startsWith('data:image')) {
-      const parts = payment.screenshotUrl.split(';');
+    if (targetScreenshot.startsWith('data:image')) {
+      const parts = targetScreenshot.split(';');
       const mime = parts[0].split(':')[1];
       const data = parts[1].split(',')[1];
       
@@ -236,7 +249,7 @@ router.get('/payment/:id/screenshot', async (req, res) => {
     }
     
     // Otherwise it's a normal URL, just redirect or send an HTML tag
-    res.send(`<img src="${payment.screenshotUrl}" style="max-width: 100%; height: auto;" />`);
+    res.send(`<img src="${targetScreenshot}" style="max-width: 100%; height: auto;" />`);
   } catch (error) {
     res.status(500).send('Error loading screenshot: ' + error.message);
   }

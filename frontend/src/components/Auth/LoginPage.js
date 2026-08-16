@@ -16,13 +16,13 @@ function LoginPage({ onLogin }) {
     e.preventDefault();
     setError('');
     setLoading(true);
-    
+
     try {
       const response = await api.post('/auth/login', { 
         username, 
         password 
       });
-      
+
       // Support both old backend (response.data.token) and new backend (response.data.data.token)
       const token = response.data.token || response.data.data?.token;
       let user = response.data.user || response.data.data;
@@ -55,7 +55,7 @@ function LoginPage({ onLogin }) {
       <div className="login-card">
         <h1>🏢 StayTrack</h1>
         <h2>Hostel Management System</h2>
-        
+
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label>Username</label>
@@ -92,7 +92,7 @@ function LoginPage({ onLogin }) {
           <strong>📝 Demo Credentials:</strong>
           <p><strong>Owner:</strong> owner / owner@123</p>
           <p><strong>Warden:</strong> warden / warden@123</p>
-          <p style={{marginTop: '10px', fontSize: '11px', fontStyle: 'italic'}}>
+          <p style={{ marginTop: '10px', fontSize: '11px', fontStyle: 'italic' }}>
             💡 Create student accounts via Warden dashboard
           </p>
         </div>

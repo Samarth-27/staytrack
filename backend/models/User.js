@@ -23,6 +23,7 @@ const userSchema = new mongoose.Schema({
   // Status
   createdAt: { type: Date, default: Date.now },
   isActive: { type: Boolean, default: true },
+  presenceStatus: { type: String, enum: ['in_hostel', 'on_leave'], default: 'in_hostel' },
   
   // Archival Data
   status: { type: String, enum: ['active', 'archived'], default: 'active' },
@@ -47,6 +48,8 @@ userSchema.methods.comparePassword = async function(password) {
 
 // Method to archive student
 userSchema.methods.archiveStudent = async function(reason, wardenId) {
+  const oldRoomNumber = this.roomNumber;
+  
   this.status = 'archived';
   this.isActive = false;
   this.roomNumber = undefined; // Free up the room
@@ -55,7 +58,21 @@ userSchema.methods.archiveStudent = async function(reason, wardenId) {
     archivedAt: new Date(),
     archivedBy: wardenId
   };
-  return await this.save();
+  const savedUser = await this.save();
+  
+  // Update the Room status directly if needed
+  if (oldRoomNumber) {
+    const Room = mongoose.model('Room');
+    const room = await Room.findOne({ roomNumber: oldRoomNumber });
+    if (room) {
+      const User = mongoose.model('User');
+      const occupants = await User.countDocuments({ roomNumber: oldRoomNumber, status: { $ne: 'archived' } });
+      room.status = occupants >= room.capacity ? 'occupied' : 'vacant';
+      await room.save();
+    }
+  }
+  
+  return savedUser;
 };
 
 // Method to reactivate student

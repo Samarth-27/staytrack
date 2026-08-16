@@ -20,8 +20,12 @@ const paymentSchema = new mongoose.Schema({
   },
   
   // Transaction Details
-  transactionId: { type: String },
-  screenshotUrl: { type: String }, // Can store a URL or Base64 string
+  transactionId: { type: String }, // Legacy/Unified
+  screenshotUrl: { type: String }, // Legacy/Unified
+  messTransactionId: { type: String },
+  messScreenshotUrl: { type: String },
+  rentTransactionId: { type: String },
+  rentScreenshotUrl: { type: String },
   hasScreenshot: { type: Boolean, default: false },
   paidDate: { type: Date },
   dueDate: { type: Date },
