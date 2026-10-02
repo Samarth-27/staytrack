@@ -7,6 +7,7 @@ const OwnerAIInsights = ({ token }) => {
   const [insights, setInsights] = useState(null);
   const [loading, setLoading] = useState(true);
   const [generatingReport, setGeneratingReport] = useState(false);
+  const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
 
   useEffect(() => {
     fetchInsights();
@@ -29,7 +30,7 @@ const OwnerAIInsights = ({ token }) => {
   const handleDownloadReport = async () => {
     setGeneratingReport(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/ai/reports/monthly`, {
+      const res = await fetch(`${API_BASE_URL}/ai/reports/monthly?month=${selectedMonth}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const report = await res.json();
@@ -69,22 +70,39 @@ const OwnerAIInsights = ({ token }) => {
 
   return (
     <div className="owner-ai-insights" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', marginBottom: '2rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
         <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
           <TrendingUp color="#4361ee" /> AI Predictive Analytics
         </h2>
-        <button 
-          onClick={handleDownloadReport} 
-          disabled={generatingReport}
-          style={{
-            display: 'flex', alignItems: 'center', gap: '8px',
-            backgroundColor: '#4361ee', color: '#fff', border: 'none',
-            padding: '10px 20px', borderRadius: '8px', cursor: 'pointer'
-          }}
-        >
-          {generatingReport ? <Loader2 size={18} className="spinner" /> : <Download size={18} />}
-          Generate Monthly PDF
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <input 
+            type="month"
+            value={selectedMonth}
+            max={new Date().toISOString().slice(0, 7)}
+            onChange={(e) => setSelectedMonth(e.target.value)}
+            style={{
+              padding: '8px 12px',
+              borderRadius: '8px',
+              border: '1px solid #ccc',
+              fontSize: '14px',
+              cursor: 'pointer'
+            }}
+            title="Select past or current month for AI Report"
+          />
+          <button 
+            onClick={handleDownloadReport} 
+            disabled={generatingReport}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '8px',
+              backgroundColor: '#4361ee', color: '#fff', border: 'none',
+              padding: '10px 18px', borderRadius: '8px', cursor: 'pointer',
+              fontWeight: '500'
+            }}
+          >
+            {generatingReport ? <Loader2 size={18} className="spinner" /> : <Download size={18} />}
+            Generate {selectedMonth} PDF
+          </button>
+        </div>
       </div>
 
       {insights && (

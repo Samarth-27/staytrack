@@ -58,11 +58,15 @@ router.post('/complaint', verifyToken, checkRole(['student']), async (req, res) 
   try {
     const { title, description, category, priority } = req.body;
     if (!title || !description || !category) {
-      return res.status(400).json({ message: 'Title, description, and category are required' });
+      return res.status(400).json({ 
+        message: 'You have encountered an error: Title, description, or category is missing. Please correct your details and submit again.' 
+      });
     }
 
     const student = await User.findById(req.user.userId);
-    if (!student) return res.status(404).json({ message: 'Student not found' });
+    if (!student) {
+      return res.status(404).json({ message: 'You have encountered an error: Student account not found. Please log in again.' });
+    }
 
     let room = null;
     if (student.roomNumber) {
@@ -71,7 +75,7 @@ router.post('/complaint', verifyToken, checkRole(['student']), async (req, res) 
 
     if (!room) {
       return res.status(400).json({ 
-        message: 'No valid room assigned. Please contact the warden to assign a room before submitting complaints.' 
+        message: 'You have encountered an error: No valid room assigned. Please contact the warden to allocate your room details before submitting complaints.' 
       });
     }
 
@@ -92,7 +96,7 @@ router.post('/complaint', verifyToken, checkRole(['student']), async (req, res) 
 
     res.status(201).json({ message: 'Complaint submitted', complaint });
   } catch (error) {
-    res.status(500).json({ message: 'Error submitting complaint', error: error.message });
+    res.status(500).json({ message: `You have encountered an error: ${error.message}. Please correct your details and try again.`, error: error.message });
   }
 });
 
@@ -107,7 +111,7 @@ router.get('/complaints', verifyToken, checkRole(['student']), async (req, res) 
       .sort({ createdAt: -1 });
     res.json(complaints);
   } catch (error) {
-    res.status(500).json({ message: 'Error fetching complaints', error: error.message });
+    res.status(500).json({ message: `You have encountered an error: ${error.message}. Please correct your details and try again.`, error: error.message });
   }
 });
 
@@ -121,19 +125,19 @@ router.post('/payment', verifyToken, checkRole(['student']), async (req, res) =>
 
     const monthRegex = /^\d{4}-\d{2}$/;
     if (!month || !monthRegex.test(month)) {
-      return res.status(400).json({ message: 'Invalid month format. Use YYYY-MM' });
+      return res.status(400).json({ message: 'You have encountered an error: Invalid month format. Please correct your details to use YYYY-MM.' });
     }
 
     const currentMonthStr = new Date().toISOString().slice(0, 7);
     if (month > currentMonthStr) {
-      return res.status(400).json({ message: 'Cannot submit payments for future months' });
+      return res.status(400).json({ message: 'You have encountered an error: Cannot submit payments for future months. Please correct your month selection.' });
     }
     
     if (messMode === 'online' && !messTransactionId && !messScreenshotUrl) {
-      return res.status(400).json({ message: 'Transaction ID or screenshot is required for online mess payment' });
+      return res.status(400).json({ message: 'You have encountered an error: Transaction ID or screenshot is required for online mess payment. Please correct your details and upload proof.' });
     }
     if (rentMode === 'online' && !rentTransactionId && !rentScreenshotUrl) {
-      return res.status(400).json({ message: 'Transaction ID or screenshot is required for online rent payment' });
+      return res.status(400).json({ message: 'You have encountered an error: Transaction ID or screenshot is required for online rent payment. Please correct your details and upload proof.' });
     }
 
     const student = await User.findById(req.user.userId);

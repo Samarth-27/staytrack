@@ -41,3 +41,10 @@ Thumbs.db
 *.njsproj
 *.sln
 *.sw?
+
+# Interview & Reading Documentation (Do Not Push)
+*.docx
+build_docx.py
+INTERVIEW_*.md
+DEEP_DIVE_*.md
+

@@ -14,6 +14,7 @@ const wardenRoutes = require('./routes/wardenRoutes');
 const studentRoutes = require('./routes/studentRoutes');
 const wardenExtendedRoutes = require('./routes/wardenExtendedRoutes');
 const aiRoutes = require('./routes/aiRoutes');
+const pollRoutes = require('./routes/pollRoutes');
 
 const app = express();
 
@@ -62,10 +63,17 @@ app.use('/api', wardenExtendedRoutes);
 // AI Chat Routes
 app.use('/api/ai', aiRoutes);
 
+// Service Polls & Maintenance Updates (Plumber, Electrician, AC, Rent notices)
+app.use('/api/polls', pollRoutes);
+
 // ============ ERROR HANDLING ============
 app.use((err, req, res, next) => {
-  console.error('Error:', err);
-  res.status(500).json({ message: 'Server error', error: err.message });
+  console.error('Server Error:', err);
+  const detail = err.message || 'Internal server error';
+  res.status(err.status || 500).json({ 
+    message: `You have encountered an error: ${detail}. Please correct your details and try again.`, 
+    error: detail 
+  });
 });
 
 // ============ AUTO SEED FUNCTION ============

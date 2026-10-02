@@ -43,10 +43,17 @@ const AIChatWidget = ({ token }) => {
       if (res.ok) {
         setMessages(prev => [...prev, { role: 'assistant', content: data.reply }]);
       } else {
-        setMessages(prev => [...prev, { role: 'assistant', content: 'Sorry, I encountered an error: ' + (data.message || 'Unknown error') }]);
+        const detail = data.message || 'Request could not be processed';
+        setMessages(prev => [...prev, { 
+          role: 'assistant', 
+          content: `You have encountered an error: ${detail}. Please correct your details and try again.` 
+        }]);
       }
     } catch (error) {
-      setMessages(prev => [...prev, { role: 'assistant', content: 'Network error communicating with AI.' }]);
+      setMessages(prev => [...prev, { 
+        role: 'assistant', 
+        content: 'You have encountered an error: Network connection to server failed. Please verify your connection or correct your request details and try again.' 
+      }]);
     } finally {
       setIsLoading(false);
     }

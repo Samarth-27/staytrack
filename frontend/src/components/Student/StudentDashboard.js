@@ -3,11 +3,12 @@ import StudentProfile from './StudentProfile';
 import StudentComplaints from './StudentComplaints';
 import StudentPayments from './StudentPayments';
 import StudentNotices from './StudentNotices';
+import StudentPolls from './StudentPolls';
 import AIChatWidget from '../AIChatWidget';
 
 /**
  * STUDENT DASHBOARD MAIN COMPONENT
- * Manages: Profile, Complaints, Payments
+ * Manages: Profile, Complaints, Payments, Service Polls, Notices
  */
 function StudentDashboard({ user, token, onLogout }) {
   const [activeTab, setActiveTab] = useState('profile');
@@ -44,6 +45,12 @@ function StudentDashboard({ user, token, onLogout }) {
           Payments
         </button>
         <button 
+          className={activeTab === 'polls' ? 'active' : ''} 
+          onClick={() => setActiveTab('polls')}
+        >
+          🗳️ Service Polls
+        </button>
+        <button 
           className={activeTab === 'notices' ? 'active' : ''} 
           onClick={() => setActiveTab('notices')}
         >
@@ -56,7 +63,8 @@ function StudentDashboard({ user, token, onLogout }) {
         {activeTab === 'profile' && <StudentProfile token={token} />}
         {activeTab === 'complaints' && <StudentComplaints token={token} />}
         {activeTab === 'payments' && <StudentPayments token={token} />}
-        {activeTab === 'notices' && <StudentNotices />}
+        {activeTab === 'polls' && <StudentPolls token={token} />}
+        {activeTab === 'notices' && <StudentNotices token={token} />}
       </div>
       
       <AIChatWidget token={token} role="student" />

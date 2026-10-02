@@ -35,22 +35,22 @@ const executeTool = async (toolName, args, user) => {
       // STUDENT TOOLS
       // ==========================================
       case 'getMyPendingPayments':
-        if (userRole !== 'student') return { error: 'Unauthorized.' };
+        if (userRole !== 'student') return { error: 'You have encountered an error: Unauthorized access. Only students can view their personal pending payments.' };
         return await Payment.find({ student: userId, status: { $ne: 'paid' } }).lean();
 
       case 'getMyPayments':
-        if (userRole !== 'student') return { error: 'Unauthorized.' };
+        if (userRole !== 'student') return { error: 'You have encountered an error: Unauthorized access. Only students can view their personal payment history.' };
         return await Payment.find({ student: userId }).sort({ createdAt: -1 }).lean();
 
       case 'getMyComplaints':
-        if (userRole !== 'student') return { error: 'Unauthorized.' };
+        if (userRole !== 'student') return { error: 'You have encountered an error: Unauthorized access. Only students can view their personal complaints.' };
         return await Complaint.find({ student: userId }).sort({ createdAt: -1 }).lean();
 
       case 'raiseComplaint':
-        if (userRole !== 'student') return { error: 'Unauthorized.' };
-        if (!user.roomNumber) return { error: 'You are not assigned to a room.' };
+        if (userRole !== 'student') return { error: 'You have encountered an error: Unauthorized. Only students can raise complaints.' };
+        if (!user.roomNumber) return { error: 'You have encountered an error: No room assigned to your account. Please contact the warden to allocate your room details before submitting a complaint.' };
         const room = await Room.findOne({ roomNumber: user.roomNumber });
-        if (!room) return { error: 'Room not found.' };
+        if (!room) return { error: 'You have encountered an error: Room details could not be found. Please contact the warden to correct your room assignment.' };
         
         const newComplaint = new Complaint({
           student: userId, room: room._id, title: args.title, description: args.description, category: args.category,
@@ -63,14 +63,16 @@ const executeTool = async (toolName, args, user) => {
       // WARDEN & OWNER TOOLS
       // ==========================================
       case 'searchStudent':
-        if (userRole !== 'warden' && userRole !== 'owner') return { error: 'Unauthorized.' };
+        if (userRole !== 'warden' && userRole !== 'owner') return { error: 'You have encountered an error: Unauthorized access. Only wardens and owners can search student records.' };
+        if (!args.query) return { error: 'You have encountered an error: Missing student name or username. Please correct your details and provide a search term.' };
         return await User.find({ role: 'student', $or: [{ name: new RegExp(args.query, 'i') }, { username: new RegExp(args.query, 'i') }] }).select('name username roomNumber status').lean();
 
       case 'allocateRoom':
-        if (userRole !== 'warden') return { error: 'Unauthorized.' };
+        if (userRole !== 'warden') return { error: 'You have encountered an error: Unauthorized access. Only wardens can allocate rooms.' };
+        if (!args.studentId || !args.roomNumber) return { error: 'You have encountered an error: Missing studentId or roomNumber. Please correct your details and provide both.' };
         
         const targetStudent = await User.findById(args.studentId);
-        if (!targetStudent) return { error: 'Student not found.' };
+        if (!targetStudent) return { error: 'You have encountered an error: Student record was not found. Please correct your student details.' };
         const oldRoomNumber = targetStudent.roomNumber;
 
         let targetRoom = await Room.findOne({ roomNumber: args.roomNumber });
@@ -80,7 +82,7 @@ const executeTool = async (toolName, args, user) => {
 
         const occupantsCount = await User.countDocuments({ roomNumber: args.roomNumber, status: { $ne: 'archived' } });
         if (occupantsCount >= targetRoom.capacity) {
-          return { error: 'Room is full.' };
+          return { error: `You have encountered an error: Room ${args.roomNumber} is full (capacity: ${targetRoom.capacity}). Please correct your room selection and choose a vacant room.` };
         }
 
         if (occupantsCount + 1 >= targetRoom.capacity) {
@@ -105,50 +107,51 @@ const executeTool = async (toolName, args, user) => {
         return { success: true, message: `Student allocated to Room ${args.roomNumber}` };
 
       case 'getPendingPayments':
-        if (userRole !== 'warden' && userRole !== 'owner') return { error: 'Unauthorized.' };
+        if (userRole !== 'warden' && userRole !== 'owner') return { error: 'You have encountered an error: Unauthorized access. Only wardens and owners can view pending payments.' };
         return await Payment.find({ status: 'pending' }).populate('student', 'name roomNumber').limit(20).lean();
 
       case 'approvePayment':
-        if (userRole !== 'warden') return { error: 'Unauthorized.' };
-        await Payment.findByIdAndUpdate(args.paymentId, { status: 'paid', paidDate: Date.now() });
+        if (userRole !== 'warden') return { error: 'You have encountered an error: Unauthorized access. Only wardens can approve payments.' };
+        if (!args.paymentId) return { error: 'You have encountered an error: Missing payment ID. Please correct your details and provide the payment ID.' };
+        const payment = await Payment.findByIdAndUpdate(args.paymentId, { status: 'paid', paidDate: Date.now() });
+        if (!payment) return { error: 'You have encountered an error: Payment record not found. Please verify and correct the payment ID.' };
         return { success: true, message: 'Payment approved.' };
 
       case 'getRoomOccupancy':
-        if (userRole !== 'warden' && userRole !== 'owner') return { error: 'Unauthorized.' };
+        if (userRole !== 'warden' && userRole !== 'owner') return { error: 'You have encountered an error: Unauthorized access.' };
         return { total: await Room.countDocuments(), occupied: await Room.countDocuments({ status: 'occupied' }), vacant: await Room.countDocuments({ status: 'vacant' }) };
 
       case 'getComplaintStats':
-        if (userRole !== 'warden' && userRole !== 'owner') return { error: 'Unauthorized.' };
+        if (userRole !== 'warden' && userRole !== 'owner') return { error: 'You have encountered an error: Unauthorized access.' };
         return { total: await Complaint.countDocuments(), open: await Complaint.countDocuments({ status: 'open' }) };
 
       // ==========================================
       // OWNER ONLY TOOLS
       // ==========================================
       case 'getRevenueStats':
-        if (userRole !== 'owner') return { error: 'Unauthorized. Owner only.' };
+        if (userRole !== 'owner') return { error: 'You have encountered an error: Unauthorized access. Owner access required.' };
         const payments = await Payment.find({ status: 'paid' });
         const revenue = payments.reduce((sum, p) => sum + p.amount, 0);
         return { totalRevenue: revenue, collectedPayments: payments.length };
 
       case 'businessSummary':
-        if (userRole !== 'owner') return { error: 'Unauthorized. Owner only.' };
+        if (userRole !== 'owner') return { error: 'You have encountered an error: Unauthorized access. Owner access required.' };
         const rev = await Payment.find({ status: 'paid' });
         const tot = rev.reduce((sum, p) => sum + p.amount, 0);
         const stu = await User.countDocuments({ role: 'student', status: 'active' });
         return { executiveSummary: `Hostel has ${stu} active students. Total revenue is Rs ${tot}. Operations are stable.` };
 
       case 'forecastRevenue':
-        if (userRole !== 'owner') return { error: 'Unauthorized. Owner only.' };
+        if (userRole !== 'owner') return { error: 'You have encountered an error: Unauthorized access. Owner access required.' };
         const activeStudents = await User.countDocuments({ role: 'student', status: 'active' });
-        // Assuming standard rent is 8500
         const projected = activeStudents * 8500;
         return { projectedNextMonth: projected, confidence: "94%" };
 
       default:
-        return { error: `Tool ${toolName} not found` };
+        return { error: `You have encountered an error: Tool '${toolName}' not found. Please correct your request details and try again.` };
     }
   } catch (error) {
-    return { error: error.message };
+    return { error: `You have encountered an error: ${error.message}. Please correct your details and try again.` };
   }
 };
 

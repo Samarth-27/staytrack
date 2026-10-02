@@ -4,6 +4,7 @@ import WardenRooms from './WardenRooms';
 import WardenComplaints from './WardenComplaints';
 import WardenPayments from './WardenPayments';
 import WardenAIOverview from './WardenAIOverview';
+import WardenPolls from './WardenPolls';
 import AIChatWidget from '../AIChatWidget';
 
 function WardenDashboard({ user, token, onLogout }) {
@@ -26,6 +27,9 @@ function WardenDashboard({ user, token, onLogout }) {
             AI Copilot
           </span>
         </button>
+        <button className={activeTab === 'polls' ? 'active' : ''} onClick={() => setActiveTab('polls')}>
+          🛠️ Service Polls
+        </button>
         <button className={activeTab === 'students' ? 'active' : ''} onClick={() => setActiveTab('students')}>Students</button>
         <button className={activeTab === 'rooms' ? 'active' : ''} onClick={() => setActiveTab('rooms')}>Rooms</button>
         <button className={activeTab === 'complaints' ? 'active' : ''} onClick={() => setActiveTab('complaints')}>Complaints</button>
@@ -34,6 +38,7 @@ function WardenDashboard({ user, token, onLogout }) {
 
       <div className="content">
         {activeTab === 'ai-overview' && <WardenAIOverview token={token} />}
+        {activeTab === 'polls' && <WardenPolls token={token} />}
         {activeTab === 'students' && <WardenStudents token={token} />}
         {activeTab === 'rooms' && <WardenRooms token={token} />}
         {activeTab === 'complaints' && <WardenComplaints token={token} />}
