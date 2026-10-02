@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { API_BASE_URL } from '../../api/config';
+import StudentDossierModal from '../StudentDossierModal';
 
 const API_URL = API_BASE_URL;
 
@@ -14,6 +15,8 @@ function WardenStudents({ token }) {
   // New State variables for features
   const [selectedStudents, setSelectedStudents] = useState([]);
   const [showArchived, setShowArchived] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [viewingDossierStudent, setViewingDossierStudent] = useState(null);
   
   const [modalState, setModalState] = useState({ isOpen: false, title: '', message: '', onConfirm: null, isAlert: false });
   const showConfirm = (title, message, onConfirm) => setModalState({ isOpen: true, title, message, onConfirm, isAlert: false });
@@ -160,8 +163,20 @@ function WardenStudents({ token }) {
     setEditingStudentId(null);
   };
 
-  const filteredStudents = students.filter(s => showArchived ? s.status === 'archived' : s.status !== 'archived');
-
+  const filteredStudents = students.filter(s => {
+    const matchesArchive = showArchived ? s.status === 'archived' : s.status !== 'archived';
+    if (!matchesArchive) return false;
+    if (!searchTerm.trim()) return true;
+    const term = searchTerm.toLowerCase();
+    return (
+      (s.name && s.name.toLowerCase().includes(term)) ||
+      (s.username && s.username.toLowerCase().includes(term)) ||
+      (s.roomNumber && String(s.roomNumber).includes(term)) ||
+      (s.collegeName && s.collegeName.toLowerCase().includes(term)) ||
+      (s.studyStatus && s.studyStatus.toLowerCase().includes(term)) ||
+      (s.aadharNumber && s.aadharNumber.includes(term))
+    );
+  });
 
   if (loading) return <div className="loading">Loading students...</div>;
 
@@ -189,7 +204,7 @@ function WardenStudents({ token }) {
       )}
 
       <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h2>Student Management</h2>
+        <h2>Student Management & KYC</h2>
         <div style={{ display: 'flex', gap: '10px' }}>
           <button className="btn-secondary" onClick={() => setShowArchived(!showArchived)}>
             {showArchived ? '👁️ Show Active' : '📦 Show Archived'}
@@ -205,6 +220,34 @@ function WardenStudents({ token }) {
             </>
           )}
         </div>
+      </div>
+
+      {/* Search Bar */}
+      <div style={{ display: 'flex', gap: '12px', alignItems: 'center', margin: '16px 0' }}>
+        <input 
+          type="text" 
+          placeholder="🔍 Search students by name, room, college, study status, aadhaar..." 
+          value={searchTerm} 
+          onChange={(e) => setSearchTerm(e.target.value)} 
+          style={{
+            flex: 1,
+            padding: '10px 14px',
+            borderRadius: '8px',
+            border: '1px solid var(--border-dim, #333)',
+            background: 'var(--bg-surface, #121212)',
+            color: '#fff',
+            fontSize: '13px'
+          }}
+        />
+        {searchTerm && (
+          <button 
+            className="btn-secondary" 
+            onClick={() => setSearchTerm('')}
+            style={{ padding: '8px 14px' }}
+          >
+            Clear
+          </button>
+        )}
       </div>
       
       {showForm && !showArchived && (
@@ -243,51 +286,130 @@ function WardenStudents({ token }) {
         <thead>
           <tr style={{ background: 'var(--bg-surface)', textAlign: 'left' }}>
             {!showArchived && <th><input type="checkbox" onChange={(e) => setSelectedStudents(e.target.checked ? filteredStudents.map(s => s._id) : [])} checked={selectedStudents.length === filteredStudents.length && filteredStudents.length > 0} /></th>}
-            <th>Name</th>
-            <th>Username</th>
+            <th>Student Details</th>
             <th>Room</th>
-            <th>Status</th>
+            <th>Study Status & College</th>
+            <th>KYC Verification</th>
+            <th>Presence</th>
             <th>Actions</th>
           </tr>
         </thead>
         <tbody>
           {filteredStudents.length > 0 ? (
-            filteredStudents.map(student => (
-              <tr key={student._id} style={{ borderBottom: '1px solid #ddd' }}>
-                {!showArchived && <td><input type="checkbox" checked={selectedStudents.includes(student._id)} onChange={() => toggleSelection(student._id)} /></td>}
-                <td>
-                  {editingStudentId === student._id ? (
-                    <div style={{display:'flex', gap:'5px', alignItems:'center'}}>
-                      <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} style={{padding:'4px', width:'120px'}} />
-                      <button className="btn-small success" onClick={() => handleSaveName(student._id)} title="Save Name">💾</button>
-                      <button className="btn-small danger" onClick={handleCancelEdit} title="Cancel">✕</button>
+            filteredStudents.map(student => {
+              const completion = student.profileCompletionPercentage !== undefined 
+                ? student.profileCompletionPercentage 
+                : (student.profileCompleted ? 100 : 35);
+
+              return (
+                <tr key={student._id} style={{ borderBottom: '1px solid #262626' }}>
+                  {!showArchived && (
+                    <td>
+                      <input 
+                        type="checkbox" 
+                        checked={selectedStudents.includes(student._id)} 
+                        onChange={() => toggleSelection(student._id)} 
+                      />
+                    </td>
+                  )}
+                  <td>
+                    {editingStudentId === student._id ? (
+                      <div style={{display:'flex', gap:'5px', alignItems:'center'}}>
+                        <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} style={{padding:'4px', width:'120px'}} />
+                        <button className="btn-small success" onClick={() => handleSaveName(student._id)} title="Save Name">💾</button>
+                        <button className="btn-small danger" onClick={handleCancelEdit} title="Cancel">✕</button>
+                      </div>
+                    ) : (
+                      <div>
+                        <div style={{display:'flex', gap:'6px', alignItems:'center'}}>
+                          <strong style={{ color: 'var(--text-main, #fff)', fontSize: '14px' }}>{student.name}</strong>
+                          {student.status !== 'archived' && (
+                            <button style={{background:'none', border:'none', cursor:'pointer', fontSize:'13px'}} onClick={() => handleEditClick(student)} title="Edit Name">✏️</button>
+                          )}
+                        </div>
+                        <div style={{ fontSize: '12px', color: 'var(--text-muted, #888)', marginTop: '2px' }}>
+                          @{student.username} {student.phone ? `• 📞 ${student.phone}` : ''}
+                        </div>
+                      </div>
+                    )}
+                  </td>
+                  <td>
+                    <span style={{ fontWeight: '600', color: '#60a5fa' }}>
+                      {student.roomNumber ? `Room ${student.roomNumber}` : 'Unassigned'}
+                    </span>
+                  </td>
+                  <td>
+                    <div>
+                      <span style={{
+                        display: 'inline-block',
+                        padding: '2px 8px',
+                        borderRadius: '4px',
+                        fontSize: '11px',
+                        fontWeight: '600',
+                        background: 'rgba(59, 130, 246, 0.15)',
+                        color: '#60a5fa'
+                      }}>
+                        {student.studyStatus || 'Not Specified'}
+                      </span>
+                      <div style={{ fontSize: '11px', color: 'var(--text-muted, #888)', marginTop: '3px' }}>
+                        {student.collegeName || 'College Not Added'}
+                      </div>
                     </div>
-                  ) : (
-                    <div style={{display:'flex', gap:'5px', alignItems:'center'}}>
-                      {student.name}
-                      {student.status !== 'archived' && (
-                        <button style={{background:'none', border:'none', cursor:'pointer', fontSize:'14px', marginLeft:'5px'}} onClick={() => handleEditClick(student)} title="Edit Name">✏️</button>
+                  </td>
+                  <td>
+                    <span style={{
+                      padding: '3px 8px',
+                      borderRadius: '12px',
+                      fontSize: '11px',
+                      fontWeight: '600',
+                      background: completion >= 80 ? 'rgba(52, 211, 153, 0.15)' : 'rgba(251, 191, 36, 0.15)',
+                      color: completion >= 80 ? '#34d399' : '#fbbf24',
+                      border: `1px solid ${completion >= 80 ? 'rgba(52, 211, 153, 0.3)' : 'rgba(251, 191, 36, 0.3)'}`
+                    }}>
+                      {completion >= 80 ? `✓ KYC ${completion}%` : `⚠️ ${completion}%`}
+                    </span>
+                  </td>
+                  <td>
+                    <span style={{
+                      fontSize: '12px',
+                      fontWeight: '500',
+                      color: student.presenceStatus === 'on_leave' ? 'var(--warning, #fbbf24)' : 'var(--success, #34d399)'
+                    }}>
+                      {student.presenceStatus === 'on_leave' ? '🔴 On Leave' : '🟢 In Hostel'}
+                    </span>
+                  </td>
+                  <td>
+                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                      <button 
+                        className="btn-small" 
+                        onClick={() => setViewingDossierStudent(student)}
+                        style={{
+                          background: 'rgba(59, 130, 246, 0.2)',
+                          color: '#60a5fa',
+                          border: '1px solid rgba(59, 130, 246, 0.4)',
+                          fontWeight: '600',
+                          padding: '4px 8px'
+                        }}
+                        title="View Full Profile Dossier"
+                      >
+                        📋 Dossier
+                      </button>
+
+                      {student.status !== 'archived' ? (
+                        <>
+                          <button className="btn-small" onClick={() => handleResetPassword(student._id)}>Reset</button>
+                          <button className="btn-small btn-danger" onClick={() => handleArchive(student._id)}>📦 Archive</button>
+                        </>
+                      ) : (
+                        <button className="btn-small btn-success" onClick={() => handleReactivate(student._id)}>✓ Reactivate</button>
                       )}
                     </div>
-                  )}
-                </td>
-                <td>{student.username}</td>
-                <td>{student.roomNumber ? `Room ${student.roomNumber}` : 'Unassigned'}</td>
-                <td><span className={`badge ${student.status === 'archived' ? 'archived' : 'active'}`}>{student.status === 'archived' ? 'Archived' : 'Active'}</span></td>
-                <td>
-                  {student.status !== 'archived' ? (
-                    <div style={{ display: 'flex', gap: '5px' }}>
-                      <button className="btn-small" onClick={() => handleResetPassword(student._id)}>Reset</button>
-                      <button className="btn-small btn-danger" onClick={() => handleArchive(student._id)}>📦 Archive</button>
-                    </div>
-                  ) : (
-                    <button className="btn-small btn-success" onClick={() => handleReactivate(student._id)}>✓ Reactivate</button>
-                  )}
-                </td>
-              </tr>
-            ))
+                  </td>
+                </tr>
+              );
+            })
           ) : (
-            <tr><td colSpan={showArchived ? "5" : "6"} className="no-data" style={{ textAlign: 'center', padding: '20px' }}>No {showArchived ? 'archived' : 'active'} students found</td></tr>
+            <tr><td colSpan={showArchived ? "6" : "7"} className="no-data" style={{ textAlign: 'center', padding: '20px' }}>No {showArchived ? 'archived' : 'active'} students found</td></tr>
           )}
         </tbody>
       </table>
@@ -306,6 +428,14 @@ function WardenStudents({ token }) {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Student Dossier Modal */}
+      {viewingDossierStudent && (
+        <StudentDossierModal 
+          student={viewingDossierStudent} 
+          onClose={() => setViewingDossierStudent(null)} 
+        />
       )}
     </div>
   );

@@ -40,6 +40,12 @@ router.get('/profile', verifyToken, checkRole(['student']), async (req, res) => 
     const student = await User.findById(req.user.userId).select('-password');
     if (!student) return res.status(404).json({ message: 'Student not found' });
 
+    // Compute completion if not already computed
+    if (student.profileCompletionPercentage === undefined || student.profileCompletionPercentage === 0) {
+      student.calculateProfileCompletion();
+      await student.save();
+    }
+
     let room = null;
     if (student.roomNumber) {
       room = await Room.findOne({ roomNumber: student.roomNumber }).populate('students', '-password');
@@ -47,6 +53,171 @@ router.get('/profile', verifyToken, checkRole(['student']), async (req, res) => 
     res.json({ student, room });
   } catch (error) {
     res.status(500).json({ message: 'Error fetching profile', error: error.message });
+  }
+});
+
+/**
+ * UPDATE STUDENT PROFILE (KYC, STUDY STATUS & ACADEMICS)
+ * Student updates comprehensive details: Aadhaar, Study Status, College, Guardians, Address, etc.
+ */
+router.put('/profile', verifyToken, checkRole(['student']), async (req, res) => {
+  try {
+    const student = await User.findById(req.user.userId);
+    if (!student) {
+      return res.status(404).json({ 
+        message: 'You have encountered an error: Student account not found. Please correct your details and try again.' 
+      });
+    }
+
+    const {
+      name,
+      phone,
+      email,
+      aadharNumber,
+      dob,
+      gender,
+      bloodGroup,
+      studyStatus,
+      collegeName,
+      course,
+      branch,
+      currentYear,
+      enrollmentNumber,
+      fatherName,
+      fatherPhone,
+      motherName,
+      motherPhone,
+      guardianName,
+      guardianRelation,
+      guardianPhone,
+      guardianEmail,
+      emergencyContactName,
+      emergencyContactRelation,
+      emergencyContactPhone,
+      permanentAddress,
+      city,
+      state,
+      pincode,
+      foodPreference,
+      vehicleNumber,
+      medicalConditions
+    } = req.body;
+
+    // Aadhaar Validation: If provided, must be 12 digits
+    if (aadharNumber !== undefined && aadharNumber !== null && String(aadharNumber).trim() !== '') {
+      const cleanAadhar = String(aadharNumber).replace(/[\s-]/g, '');
+      if (!/^\d{12}$/.test(cleanAadhar)) {
+        return res.status(400).json({ 
+          message: 'You have encountered an error: Aadhaar number must be a valid 12-digit number. Please correct your details and try again.' 
+        });
+      }
+      student.aadharNumber = cleanAadhar;
+    }
+
+    // Phone Validation: If provided, must be 10 digits
+    if (phone !== undefined && phone !== null && String(phone).trim() !== '') {
+      const cleanPhone = String(phone).replace(/[\s-]/g, '');
+      if (!/^\d{10}$/.test(cleanPhone)) {
+        return res.status(400).json({ 
+          message: 'You have encountered an error: Phone number must be a valid 10-digit number. Please correct your details and try again.' 
+        });
+      }
+      student.phone = cleanPhone;
+    }
+
+    // Guardian Phone Validation: If provided, must be 10 digits
+    if (guardianPhone !== undefined && guardianPhone !== null && String(guardianPhone).trim() !== '') {
+      const cleanGPhone = String(guardianPhone).replace(/[\s-]/g, '');
+      if (!/^\d{10}$/.test(cleanGPhone)) {
+        return res.status(400).json({ 
+          message: 'You have encountered an error: Guardian phone number must be a valid 10-digit number. Please correct your details and try again.' 
+        });
+      }
+      student.guardianPhone = cleanGPhone;
+    }
+
+    // Emergency Contact Phone Validation: If provided, must be 10 digits
+    if (emergencyContactPhone !== undefined && emergencyContactPhone !== null && String(emergencyContactPhone).trim() !== '') {
+      const cleanEPhone = String(emergencyContactPhone).replace(/[\s-]/g, '');
+      if (!/^\d{10}$/.test(cleanEPhone)) {
+        return res.status(400).json({ 
+          message: 'You have encountered an error: Emergency contact phone number must be a valid 10-digit number. Please correct your details and try again.' 
+        });
+      }
+      student.emergencyContactPhone = cleanEPhone;
+    }
+
+    // Pincode Validation: If provided, must be 6 digits
+    if (pincode !== undefined && pincode !== null && String(pincode).trim() !== '') {
+      const cleanPin = String(pincode).replace(/\s/g, '');
+      if (!/^\d{6}$/.test(cleanPin)) {
+        return res.status(400).json({ 
+          message: 'You have encountered an error: PIN code must be a valid 6-digit number. Please correct your details and try again.' 
+        });
+      }
+      student.pincode = cleanPin;
+    }
+
+    // Basic & Personal
+    if (name && name.trim()) student.name = name.trim();
+    if (email !== undefined) student.email = email.trim();
+    if (dob !== undefined) student.dob = dob;
+    if (gender !== undefined) student.gender = gender;
+    if (bloodGroup !== undefined) student.bloodGroup = bloodGroup;
+
+    // Academic & Study Status
+    if (studyStatus !== undefined) student.studyStatus = studyStatus;
+    if (collegeName !== undefined) student.collegeName = collegeName.trim();
+    if (course !== undefined) student.course = course.trim();
+    if (branch !== undefined) student.branch = branch.trim();
+    if (currentYear !== undefined) student.currentYear = currentYear;
+    if (enrollmentNumber !== undefined) student.enrollmentNumber = enrollmentNumber.trim();
+
+    // Parents & Guardian
+    if (fatherName !== undefined) student.fatherName = fatherName.trim();
+    if (fatherPhone !== undefined) student.fatherPhone = fatherPhone.trim();
+    if (motherName !== undefined) student.motherName = motherName.trim();
+    if (motherPhone !== undefined) student.motherPhone = motherPhone.trim();
+    if (guardianName !== undefined) student.guardianName = guardianName.trim();
+    if (guardianRelation !== undefined) student.guardianRelation = guardianRelation.trim();
+    if (guardianEmail !== undefined) student.guardianEmail = guardianEmail.trim();
+
+    // Emergency Contact
+    if (emergencyContactName !== undefined) student.emergencyContactName = emergencyContactName.trim();
+    if (emergencyContactRelation !== undefined) student.emergencyContactRelation = emergencyContactRelation.trim();
+
+    // Address
+    if (permanentAddress !== undefined) student.permanentAddress = permanentAddress.trim();
+    if (city !== undefined) student.city = city.trim();
+    if (state !== undefined) student.state = state.trim();
+
+    // Hostel Preferences
+    if (foodPreference !== undefined) student.foodPreference = foodPreference;
+    if (vehicleNumber !== undefined) student.vehicleNumber = vehicleNumber.trim();
+    if (medicalConditions !== undefined) student.medicalConditions = medicalConditions.trim();
+
+    // Calculate Completion
+    student.calculateProfileCompletion();
+    student.profileUpdatedAt = new Date();
+
+    await student.save();
+
+    const updatedProfile = await User.findById(student._id).select('-password');
+    let room = null;
+    if (updatedProfile.roomNumber) {
+      room = await Room.findOne({ roomNumber: updatedProfile.roomNumber }).populate('students', '-password');
+    }
+
+    res.json({
+      message: 'Student profile updated successfully',
+      student: updatedProfile,
+      room
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      message: `You have encountered an error: ${error.message}. Please correct your details and try again.`, 
+      error: error.message 
+    });
   }
 });
 

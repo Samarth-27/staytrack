@@ -11,14 +11,44 @@ const router = express.Router();
 
 /**
  * GET ALL STUDENTS
- * Warden can see all students to manage them
+ * Warden and Owner can see all students to manage/inspect them with full profiles
  */
-router.get('/students', verifyToken, checkRole(['warden']), async (req, res) => {
+router.get('/students', verifyToken, checkRole(['warden', 'owner']), async (req, res) => {
   try {
-    const students = await User.find({ role: 'student' }).select('-password');
+    const students = await User.find({ role: 'student' }).select('-password').sort({ createdAt: -1 });
     res.json(students);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching students', error: error.message });
+  }
+});
+
+/**
+ * GET SINGLE STUDENT FULL DOSSIER
+ * Warden and Owner can inspect a student's full KYC, academic, guardian, and room details
+ */
+router.get('/student/:id', verifyToken, checkRole(['warden', 'owner']), async (req, res) => {
+  try {
+    const student = await User.findOne({ _id: req.params.id, role: 'student' }).select('-password');
+    if (!student) {
+      return res.status(404).json({ message: 'Student not found' });
+    }
+
+    let room = null;
+    if (student.roomNumber) {
+      room = await Room.findOne({ roomNumber: student.roomNumber }).populate('students', 'name phone email username');
+    }
+
+    const payments = await Payment.find({ student: student._id }).sort({ createdAt: -1 }).limit(12);
+    const complaints = await Complaint.find({ student: student._id }).sort({ createdAt: -1 }).limit(5);
+
+    res.json({
+      student,
+      room,
+      payments,
+      complaints
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching student dossier', error: error.message });
   }
 });
 

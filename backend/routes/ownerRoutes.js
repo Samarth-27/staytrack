@@ -99,4 +99,47 @@ router.get('/pending-students', verifyToken, checkRole(['owner']), async (req, r
   }
 });
 
+/**
+  * GET ALL STUDENTS (OWNER DIRECTORY)
+  * Owner can see all students with their full profiles, KYC, and academic status
+  */
+router.get('/students', verifyToken, checkRole(['owner']), async (req, res) => {
+  try {
+    const students = await User.find({ role: 'student' }).select('-password').sort({ createdAt: -1 });
+    res.json(students);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching students', error: error.message });
+  }
+});
+
+/**
+  * GET STUDENT DOSSIER (OWNER)
+  * Owner can inspect complete dossier of any student
+  */
+router.get('/student/:id', verifyToken, checkRole(['owner']), async (req, res) => {
+  try {
+    const student = await User.findOne({ _id: req.params.id, role: 'student' }).select('-password');
+    if (!student) {
+      return res.status(404).json({ message: 'Student not found' });
+    }
+
+    let room = null;
+    if (student.roomNumber) {
+      room = await Room.findOne({ roomNumber: student.roomNumber }).populate('students', 'name phone email username');
+    }
+
+    const payments = await Payment.find({ student: student._id }).sort({ createdAt: -1 }).limit(12);
+    const complaints = await Complaint.find({ student: student._id }).sort({ createdAt: -1 }).limit(5);
+
+    res.json({
+      student,
+      room,
+      payments,
+      complaints
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching student dossier', error: error.message });
+  }
+});
+
 module.exports = router;

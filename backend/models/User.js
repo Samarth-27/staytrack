@@ -31,8 +31,95 @@ const userSchema = new mongoose.Schema({
     reason: { type: String },
     archivedAt: { type: Date },
     archivedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
-  }
+  },
+
+  // ================= Comprehensive Student Profile & KYC =================
+  // Identity & KYC
+  aadharNumber: { type: String },
+  dob: { type: String },
+  gender: { type: String, enum: ['Male', 'Female', 'Other', ''] },
+  bloodGroup: { type: String, enum: ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', ''] },
+
+  // Academic & Current Study Status
+  studyStatus: { 
+    type: String, 
+    enum: [
+      'Pursuing Degree', 
+      'Internship / Job', 
+      'Preparing for Competitive Exams', 
+      'Distance / Online Learning', 
+      'Completed / Other', 
+      ''
+    ] 
+  },
+  collegeName: { type: String },
+  course: { type: String },
+  branch: { type: String },
+  currentYear: { type: String },
+  enrollmentNumber: { type: String },
+
+  // Parents & Guardian Details
+  fatherName: { type: String },
+  fatherPhone: { type: String },
+  motherName: { type: String },
+  motherPhone: { type: String },
+  guardianName: { type: String },
+  guardianRelation: { type: String },
+  guardianPhone: { type: String },
+  guardianEmail: { type: String },
+
+  // Emergency Contact Details
+  emergencyContactName: { type: String },
+  emergencyContactRelation: { type: String },
+  emergencyContactPhone: { type: String },
+
+  // Permanent & Communication Address
+  permanentAddress: { type: String },
+  city: { type: String },
+  state: { type: String },
+  pincode: { type: String },
+
+  // Living, Dietary & Vehicle Preferences
+  foodPreference: { type: String, enum: ['Veg', 'Non-Veg', 'Jain', 'Eggetarian', ''] },
+  vehicleNumber: { type: String },
+  medicalConditions: { type: String },
+
+  // Profile Tracking & Audit
+  profileCompleted: { type: Boolean, default: false },
+  profileCompletionPercentage: { type: Number, default: 0 },
+  profileUpdatedAt: { type: Date }
 });
+
+// Calculate Profile Completion Percentage
+userSchema.methods.calculateProfileCompletion = function() {
+  const fields = [
+    this.name,
+    this.phone,
+    this.aadharNumber,
+    this.dob,
+    this.gender,
+    this.bloodGroup,
+    this.studyStatus,
+    this.collegeName,
+    this.course,
+    this.currentYear,
+    this.fatherName || this.guardianName,
+    this.fatherPhone || this.guardianPhone,
+    this.emergencyContactName,
+    this.emergencyContactPhone,
+    this.permanentAddress,
+    this.city,
+    this.state,
+    this.pincode,
+    this.foodPreference
+  ];
+
+  const filledCount = fields.filter(val => val && String(val).trim().length > 0).length;
+  const percentage = Math.round((filledCount / fields.length) * 100);
+  this.profileCompletionPercentage = percentage;
+  this.profileCompleted = percentage >= 80;
+  return percentage;
+};
 
 // Hash password before saving
 userSchema.pre('save', async function() {

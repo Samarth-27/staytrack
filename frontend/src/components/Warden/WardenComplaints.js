@@ -9,6 +9,7 @@ function WardenComplaints({ token }) {
   const [loading, setLoading] = useState(true);
   const [modalState, setModalState] = useState({ isOpen: false, complaintId: null, newStatus: '', promptText: '' });
   const [inputValue, setInputValue] = useState('');
+  const [updatingId, setUpdatingId] = useState(null);
 
   useEffect(() => { fetchComplaints(); }, []);
 
@@ -72,8 +73,8 @@ function WardenComplaints({ token }) {
                 <td><span className={`priority ${complaint.priority}`}>{complaint.priority}</span></td>
                 <td><span className={`status ${complaint.status}`}>{complaint.status}</span></td>
                 <td>
-                  {complaint.status === 'open' && <button className="btn-small" onClick={() => handleUpdateClick(complaint._id, 'in-progress')}>Start</button>}
-                  {complaint.status === 'in-progress' && <button className="btn-small success" onClick={() => handleUpdateClick(complaint._id, 'resolved')}>Resolve</button>}
+                  {complaint.status === 'open' && <button className="btn-small" disabled={updatingId === complaint._id} onClick={() => handleUpdateClick(complaint._id, 'in-progress')}>{updatingId === complaint._id ? 'Updating...' : 'Start'}</button>}
+                  {complaint.status === 'in-progress' && <button className="btn-small success" disabled={updatingId === complaint._id} onClick={() => handleUpdateClick(complaint._id, 'resolved')}>{updatingId === complaint._id ? 'Resolving...' : 'Resolve'}</button>}
                   {complaint.status === 'resolved' && <span>✓</span>}
                 </td>
               </tr>

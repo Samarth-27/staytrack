@@ -90,9 +90,14 @@ exports.generateStudentRoster = (students) => {
     id: s._id,
     name: s.name,
     username: s.username,
-    email: s.email,
-    phone: s.phone,
-    room: s.roomNumber || 'Unassigned',
+    room: s.roomNumber ? `Room ${s.roomNumber}` : 'Unassigned',
+    studyStatus: s.studyStatus || 'Not Specified',
+    college: s.collegeName || 'Not Specified',
+    course: s.course ? `${s.course} ${s.currentYear || ''}`.trim() : 'N/A',
+    aadharNumber: s.aadharNumber ? `XXXX-XXXX-${s.aadharNumber.slice(-4)}` : 'Pending',
+    phone: s.phone || 'N/A',
+    guardianPhone: s.guardianPhone || s.fatherPhone || 'N/A',
+    kycStatus: s.profileCompleted ? 'Complete (100%)' : `${s.profileCompletionPercentage || 0}%`,
     joined: exports.formatDate(s.createdAt)
   }));
 };
