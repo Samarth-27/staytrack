@@ -7,7 +7,6 @@ const API_URL = API_BASE_URL;
 function WardenComplaints({ token }) {
   const [complaints, setComplaints] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [updatingId, setUpdatingId] = useState(null);
   const [modalState, setModalState] = useState({ isOpen: false, complaintId: null, newStatus: '', promptText: '' });
   const [inputValue, setInputValue] = useState('');
 

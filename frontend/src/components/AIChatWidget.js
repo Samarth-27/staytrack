@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MessageSquare, X, Send, Bot, User, Loader2 } from 'lucide-react';
+import { MessageSquare, X, Send, Bot, Loader2 } from 'lucide-react';
 import { API_BASE_URL } from '../api/config';
 
 const AIChatWidget = ({ token }) => {
