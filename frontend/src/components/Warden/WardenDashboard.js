@@ -5,6 +5,7 @@ import WardenComplaints from './WardenComplaints';
 import WardenPayments from './WardenPayments';
 import WardenAIOverview from './WardenAIOverview';
 import WardenPolls from './WardenPolls';
+import SecurityDepositList from '../SecurityDepositList';
 import AIChatWidget from '../AIChatWidget';
 
 function WardenDashboard({ user, token, onLogout }) {
@@ -31,6 +32,9 @@ function WardenDashboard({ user, token, onLogout }) {
           🛠️ Service Polls
         </button>
         <button className={activeTab === 'students' ? 'active' : ''} onClick={() => setActiveTab('students')}>Students</button>
+        <button className={activeTab === 'security' ? 'active' : ''} onClick={() => setActiveTab('security')}>
+          💰 Security Deposits
+        </button>
         <button className={activeTab === 'rooms' ? 'active' : ''} onClick={() => setActiveTab('rooms')}>Rooms</button>
         <button className={activeTab === 'complaints' ? 'active' : ''} onClick={() => setActiveTab('complaints')}>Complaints</button>
         <button className={activeTab === 'payments' ? 'active' : ''} onClick={() => setActiveTab('payments')}>Payments</button>
@@ -40,6 +44,7 @@ function WardenDashboard({ user, token, onLogout }) {
         {activeTab === 'ai-overview' && <WardenAIOverview token={token} />}
         {activeTab === 'polls' && <WardenPolls token={token} />}
         {activeTab === 'students' && <WardenStudents token={token} />}
+        {activeTab === 'security' && <SecurityDepositList token={token} role="warden" />}
         {activeTab === 'rooms' && <WardenRooms token={token} />}
         {activeTab === 'complaints' && <WardenComplaints token={token} />}
         {activeTab === 'payments' && <WardenPayments token={token} />}

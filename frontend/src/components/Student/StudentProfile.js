@@ -12,6 +12,18 @@ function StudentProfile({ token }) {
   const [saving, setSaving] = useState(false);
   const [showAadhar, setShowAadhar] = useState(false);
 
+  // Security Deposit & Hostel Exit State
+  const [depositStatus, setDepositStatus] = useState(null);
+  const [showExitModal, setShowExitModal] = useState(false);
+  const [exitForm, setExitForm] = useState({
+    leaveReason: 'Course Completed / Relocating',
+    upiId: '',
+    accountNumber: '',
+    ifscCode: '',
+    accountHolderName: ''
+  });
+  const [requestingExit, setRequestingExit] = useState(false);
+
   // Form State
   const [formData, setFormData] = useState({
     name: '',
@@ -49,8 +61,48 @@ function StudentProfile({ token }) {
 
   useEffect(() => {
     fetchProfile();
+    fetchSecurityDepositStatus();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const fetchSecurityDepositStatus = async () => {
+    try {
+      const res = await axios.get(`${API_URL}/security-deposits/my-status`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.data?.deposit) {
+        setDepositStatus(res.data.deposit);
+      }
+    } catch (err) {
+      // non-blocking
+    }
+  };
+
+  const handleHostelExitSubmit = async (e) => {
+    e.preventDefault();
+    setRequestingExit(true);
+    try {
+      const res = await axios.post(`${API_URL}/security-deposits/student-request`, {
+        leaveReason: exitForm.leaveReason,
+        bankDetails: {
+          upiId: exitForm.upiId,
+          accountNumber: exitForm.accountNumber,
+          ifscCode: exitForm.ifscCode,
+          accountHolderName: exitForm.accountHolderName
+        }
+      }, { headers: { Authorization: `Bearer ${token}` } });
+
+      showNotification(res.data.message || 'Hostel exit request submitted. Room vacated and security refund pending with warden.', 'success');
+      setShowExitModal(false);
+      fetchProfile();
+      fetchSecurityDepositStatus();
+    } catch (err) {
+      const errMsg = err.response?.data?.message || err.message;
+      showNotification(errMsg, 'error');
+    } finally {
+      setRequestingExit(false);
+    }
+  };
 
   const fetchProfile = async () => {
     try {
@@ -547,6 +599,72 @@ function StudentProfile({ token }) {
         </div>
       </div>
 
+      {/* Security Deposit & Hostel Clearance Section */}
+      <div style={{
+        marginTop: '24px',
+        background: 'var(--bg-surface, #121212)',
+        border: '1px solid var(--border-dim, #262626)',
+        borderRadius: '10px',
+        padding: '20px'
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+          <div>
+            <h3 style={{ margin: '0 0 6px 0', fontSize: '16px', fontWeight: '600', color: 'var(--text-main, #fff)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span>💰</span> Security Deposit & Hostel Exit Clearance
+            </h3>
+            <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-muted, #888)' }}>
+              Standard security deposit is ₹5,000. When you vacate the hostel, your room is released and your refund is processed back to you by the Warden.
+            </p>
+
+            {depositStatus ? (
+              <div style={{ marginTop: '12px', padding: '12px 16px', borderRadius: '8px', background: depositStatus.refundStatus === 'refunded' ? 'rgba(52, 211, 153, 0.15)' : 'rgba(251, 191, 36, 0.15)', border: `1px solid ${depositStatus.refundStatus === 'refunded' ? 'rgba(52, 211, 153, 0.4)' : 'rgba(251, 191, 36, 0.4)'}` }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <span style={{ fontSize: '20px' }}>{depositStatus.refundStatus === 'refunded' ? '✅' : '⏳'}</span>
+                  <div>
+                    <strong style={{ color: depositStatus.refundStatus === 'refunded' ? '#34d399' : '#fbbf24', fontSize: '14px' }}>
+                      {depositStatus.refundStatus === 'refunded' 
+                        ? `Security Deposit Refunded: ₹${(depositStatus.netRefundAmount || depositStatus.originalDepositAmount).toLocaleString('en-IN')}` 
+                        : `Security Deposit Refund Pending: ₹${(depositStatus.originalDepositAmount || 5000).toLocaleString('en-IN')}`
+                      }
+                    </strong>
+                    <div style={{ fontSize: '12px', color: 'var(--text-main, #eee)', marginTop: '3px' }}>
+                      {depositStatus.refundStatus === 'refunded' ? (
+                        <>Cleared via <strong>{depositStatus.refundDetails?.refundMode || 'Online'}</strong> (Txn: {depositStatus.refundDetails?.transactionId || 'N/A'}) on {new Date(depositStatus.refundDetails?.refundedAt).toLocaleDateString()}. Clearance complete!</>
+                      ) : (
+                        <>You have vacated your room. Your security deposit clearance is currently under process by the Warden.</>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', gap: '20px', marginTop: '10px', fontSize: '13px' }}>
+                <span><strong>Security Deposit Paid:</strong> ₹5,000</span>
+                <span><strong>Status:</strong> <span style={{ color: '#34d399' }}>✓ Active in Safe Custody</span></span>
+              </div>
+            )}
+          </div>
+
+          {!depositStatus && student.status === 'active' && (
+            <button 
+              className="btn-secondary" 
+              onClick={() => setShowExitModal(true)}
+              style={{
+                padding: '10px 18px',
+                borderRadius: '8px',
+                border: '1px solid rgba(239, 68, 68, 0.4)',
+                background: 'rgba(239, 68, 68, 0.1)',
+                color: '#f87171',
+                cursor: 'pointer',
+                fontWeight: '600'
+              }}
+            >
+              🚪 Request Hostel Exit & Claim Deposit
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* Edit Profile Modal */}
       {showEditModal && (
         <div style={{
@@ -849,6 +967,112 @@ function StudentProfile({ token }) {
               </div>
             </form>
 
+          </div>
+        </div>
+      )}
+
+      {/* Hostel Exit & Deposit Claim Modal */}
+      {showExitModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.8)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 2150,
+          padding: '20px'
+        }} onClick={() => setShowExitModal(false)}>
+          <div 
+            style={{
+              background: 'var(--bg-surface, #141414)',
+              border: '1px solid var(--border-strong, #333)',
+              borderRadius: '12px',
+              width: '100%',
+              maxWidth: '520px',
+              padding: '24px',
+              boxShadow: '0 25px 50px rgba(0,0,0,0.7)'
+            }} 
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ margin: '0 0 10px 0', fontSize: '17px', color: 'var(--text-main, #fff)' }}>
+              🚪 Hostel Exit & Security Deposit Claim
+            </h3>
+            <p style={{ fontSize: '13px', color: 'var(--text-muted, #aaa)', marginBottom: '16px' }}>
+              Submitting this request will vacate your room immediately and place your <strong>₹5,000 Security Deposit</strong> into the clearance queue for refund by the Warden.
+            </p>
+
+            <form onSubmit={handleHostelExitSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div className="form-group">
+                <label style={{ fontSize: '12px', color: 'var(--text-muted, #aaa)', display: 'block', marginBottom: '4px' }}>Reason for Leaving *</label>
+                <input 
+                  type="text" 
+                  value={exitForm.leaveReason} 
+                  onChange={(e) => setExitForm({ ...exitForm, leaveReason: e.target.value })} 
+                  placeholder="e.g. Course Completed, Graduated, Relocating"
+                  style={{ width: '100%', padding: '8px', borderRadius: '6px', background: 'var(--bg-hover, #222)', border: '1px solid var(--border-dim, #333)', color: '#fff' }}
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label style={{ fontSize: '12px', color: '#60a5fa', display: 'block', marginBottom: '4px', fontWeight: '600' }}>Your UPI ID for Refund (Recommended)</label>
+                <input 
+                  type="text" 
+                  placeholder="e.g. yourname@oksbi" 
+                  value={exitForm.upiId} 
+                  onChange={(e) => setExitForm({ ...exitForm, upiId: e.target.value })} 
+                  style={{ width: '100%', padding: '8px', borderRadius: '6px', background: 'var(--bg-hover, #222)', border: '1px solid var(--border-dim, #333)', color: '#fff' }}
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div className="form-group">
+                  <label style={{ fontSize: '12px', color: 'var(--text-muted, #aaa)', display: 'block', marginBottom: '4px' }}>Bank Account Number</label>
+                  <input 
+                    type="text" 
+                    placeholder="Account Number" 
+                    value={exitForm.accountNumber} 
+                    onChange={(e) => setExitForm({ ...exitForm, accountNumber: e.target.value })} 
+                    style={{ width: '100%', padding: '8px', borderRadius: '6px', background: 'var(--bg-hover, #222)', border: '1px solid var(--border-dim, #333)', color: '#fff' }}
+                  />
+                </div>
+                <div className="form-group">
+                  <label style={{ fontSize: '12px', color: 'var(--text-muted, #aaa)', display: 'block', marginBottom: '4px' }}>Bank IFSC Code</label>
+                  <input 
+                    type="text" 
+                    placeholder="IFSC Code" 
+                    value={exitForm.ifscCode} 
+                    onChange={(e) => setExitForm({ ...exitForm, ifscCode: e.target.value })} 
+                    style={{ width: '100%', padding: '8px', borderRadius: '6px', background: 'var(--bg-hover, #222)', border: '1px solid var(--border-dim, #333)', color: '#fff' }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '10px' }}>
+                <button 
+                  type="button" 
+                  className="btn-secondary" 
+                  onClick={() => setShowExitModal(false)}
+                  disabled={requestingExit}
+                  style={{ padding: '8px 16px', borderRadius: '6px', cursor: 'pointer' }}
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  className="btn-danger" 
+                  disabled={requestingExit}
+                  style={{ padding: '8px 20px', borderRadius: '6px', cursor: 'pointer', fontWeight: '600' }}
+                >
+                  {requestingExit ? 'Submitting...' : 'Submit Exit & Claim Deposit'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

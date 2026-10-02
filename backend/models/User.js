@@ -25,8 +25,8 @@ const userSchema = new mongoose.Schema({
   isActive: { type: Boolean, default: true },
   presenceStatus: { type: String, enum: ['in_hostel', 'on_leave'], default: 'in_hostel' },
   
-  // Archival Data
-  status: { type: String, enum: ['active', 'archived'], default: 'active' },
+  // Status & Archival / Clearance
+  status: { type: String, enum: ['active', 'pending_security_refund', 'archived'], default: 'active' },
   archivedDetails: {
     reason: { type: String },
     archivedAt: { type: Date },
@@ -133,6 +133,60 @@ userSchema.methods.comparePassword = async function(password) {
   return await bcrypt.compare(password, this.password);
 };
 
+// Method when student leaves the hostel:
+// 1. Delete student from room assignment
+// 2. Free up room and update room occupancy status
+// 3. Move student to security deposit clearance/exchange list
+userSchema.methods.leaveHostel = async function(reason, wardenId, originalDepositAmount, bankDetails) {
+  const oldRoomNumber = this.roomNumber;
+  
+  this.status = 'pending_security_refund';
+  this.isActive = false;
+  this.presenceStatus = 'on_leave';
+  this.roomNumber = undefined; // Deleted from the room
+  
+  this.archivedDetails = {
+    reason: reason || 'Hostel Exit / Vacated',
+    archivedAt: new Date(),
+    archivedBy: wardenId
+  };
+
+  const savedUser = await this.save();
+
+  // Update Room occupancy status
+  if (oldRoomNumber) {
+    const Room = mongoose.model('Room');
+    const room = await Room.findOne({ roomNumber: oldRoomNumber });
+    if (room) {
+      const User = mongoose.model('User');
+      const occupants = await User.countDocuments({ roomNumber: oldRoomNumber, status: 'active' });
+      room.status = occupants >= room.capacity ? 'occupied' : 'vacant';
+      await room.save();
+    }
+  }
+
+  // Create Security Deposit Clearance Entry
+  const SecurityDeposit = mongoose.model('SecurityDeposit');
+  let depositRecord = await SecurityDeposit.findOne({ student: this._id, refundStatus: 'pending_clearance' });
+  if (!depositRecord) {
+    depositRecord = new SecurityDeposit({
+      student: this._id,
+      studentName: this.name,
+      studentUsername: this.username,
+      studentPhone: this.phone || '',
+      vacatedRoomNumber: oldRoomNumber,
+      leaveReason: reason || 'Vacated Hostel',
+      originalDepositAmount: Number(originalDepositAmount) || 5000,
+      netRefundAmount: Number(originalDepositAmount) || 5000,
+      studentBankDetails: bankDetails || {},
+      refundStatus: 'pending_clearance'
+    });
+    await depositRecord.save();
+  }
+
+  return { student: savedUser, depositRecord };
+};
+
 // Method to archive student
 userSchema.methods.archiveStudent = async function(reason, wardenId) {
   const oldRoomNumber = this.roomNumber;
@@ -153,10 +207,32 @@ userSchema.methods.archiveStudent = async function(reason, wardenId) {
     const room = await Room.findOne({ roomNumber: oldRoomNumber });
     if (room) {
       const User = mongoose.model('User');
-      const occupants = await User.countDocuments({ roomNumber: oldRoomNumber, status: { $ne: 'archived' } });
+      const occupants = await User.countDocuments({ roomNumber: oldRoomNumber, status: 'active' });
       room.status = occupants >= room.capacity ? 'occupied' : 'vacant';
       await room.save();
     }
+  }
+
+  // Ensure SecurityDeposit entry exists
+  try {
+    const SecurityDeposit = mongoose.model('SecurityDeposit');
+    let depositRecord = await SecurityDeposit.findOne({ student: this._id });
+    if (!depositRecord) {
+      depositRecord = new SecurityDeposit({
+        student: this._id,
+        studentName: this.name,
+        studentUsername: this.username,
+        studentPhone: this.phone || '',
+        vacatedRoomNumber: oldRoomNumber,
+        leaveReason: reason || 'Archived / Checked Out',
+        originalDepositAmount: 5000,
+        netRefundAmount: 5000,
+        refundStatus: 'pending_clearance'
+      });
+      await depositRecord.save();
+    }
+  } catch (err) {
+    console.error('Error auto-creating security deposit on archive:', err);
   }
   
   return savedUser;

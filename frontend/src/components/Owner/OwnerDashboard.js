@@ -7,11 +7,12 @@ import OwnerPendingStudents from './OwnerPendingStudents';
 import OwnerReports from './OwnerReports';
 import WardenRooms from '../Warden/WardenRooms';
 import WardenPolls from '../Warden/WardenPolls';
+import SecurityDepositList from '../SecurityDepositList';
 import AIChatWidget from '../AIChatWidget';
 
 /**
  * OWNER DASHBOARD MAIN COMPONENT
- * Manages all tabs: Overview, Students & KYC, Service Polls, Complaints, Payments, Pending Students, Reports, Rooms
+ * Manages all tabs: Overview, Students & KYC, Security Deposits, Service Polls, Complaints, Payments, Pending Students, Reports, Rooms
  */
 function OwnerDashboard({ user, token, onLogout }) {
   const [activeTab, setActiveTab] = useState('overview');
@@ -40,6 +41,12 @@ function OwnerDashboard({ user, token, onLogout }) {
           onClick={() => setActiveTab('students')}
         >
           👥 Students & KYC
+        </button>
+        <button 
+          className={activeTab === 'security' ? 'active' : ''} 
+          onClick={() => setActiveTab('security')}
+        >
+          💰 Security Deposits
         </button>
         <button 
           className={activeTab === 'polls' ? 'active' : ''} 
@@ -83,6 +90,7 @@ function OwnerDashboard({ user, token, onLogout }) {
       <div className="content">
         {activeTab === 'overview' && <OwnerOverview token={token} />}
         {activeTab === 'students' && <OwnerStudents token={token} />}
+        {activeTab === 'security' && <SecurityDepositList token={token} role="owner" />}
         {activeTab === 'polls' && <WardenPolls token={token} />}
         {activeTab === 'complaints' && <OwnerComplaints token={token} />}
         {activeTab === 'payments' && <OwnerPayments token={token} />}

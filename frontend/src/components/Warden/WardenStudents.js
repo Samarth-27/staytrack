@@ -17,6 +17,7 @@ function WardenStudents({ token }) {
   const [showArchived, setShowArchived] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [viewingDossierStudent, setViewingDossierStudent] = useState(null);
+  const [checkoutModal, setCheckoutModal] = useState({ isOpen: false, student: null, reason: 'Course Completed / Left Hostel', depositAmount: 5000 });
   
   const [modalState, setModalState] = useState({ isOpen: false, title: '', message: '', onConfirm: null, isAlert: false });
   const showConfirm = (title, message, onConfirm) => setModalState({ isOpen: true, title, message, onConfirm, isAlert: false });
@@ -71,18 +72,34 @@ function WardenStudents({ token }) {
     setTimeout(() => setMessage(''), 5000);
   };
 
-  // Archive Student
-  const handleArchive = (studentId) => {
-    showConfirm("Archive Student", "Are you sure you want to archive this student? Room will be freed.", async () => {
-      try {
-        await axios.post(`${API_URL}/warden/archive-student/${studentId}`, { reason: 'Checkout' }, { headers: { Authorization: `Bearer ${token}` } });
-        showMessage('✓ Student archived successfully.', 'success');
-        fetchStudents();
-      } catch (error) {
-        showMessage('✗ Cannot archive: ' + (error.response?.data?.message || 'Error occurred.'), 'error');
-      }
+  // Vacate / Checkout Student -> Free Room & Pass to Security Deposit Exchange
+  const handleOpenCheckout = (student) => {
+    setCheckoutModal({
+      isOpen: true,
+      student,
+      reason: 'Course Completed / Left Hostel',
+      depositAmount: 5000
     });
   };
+
+  const handleConfirmCheckout = async () => {
+    if (!checkoutModal.student) return;
+    try {
+      await axios.post(`${API_URL}/security-deposits/checkout-student`, {
+        studentId: checkoutModal.student._id,
+        leaveReason: checkoutModal.reason,
+        originalDepositAmount: Number(checkoutModal.depositAmount) || 5000
+      }, { headers: { Authorization: `Bearer ${token}` } });
+
+      showMessage(`✓ ${checkoutModal.student.name} checked out: Room freed & passed to Security Deposit Exchange list!`, 'success');
+      setCheckoutModal({ isOpen: false, student: null, reason: '', depositAmount: 5000 });
+      fetchStudents();
+      fetchRooms();
+    } catch (error) {
+      showMessage('✗ Error checking out: ' + (error.response?.data?.message || error.message), 'error');
+    }
+  };
+
 
   // Reactivate Student
   const handleReactivate = async (studentId) => {
@@ -395,11 +412,22 @@ function WardenStudents({ token }) {
                         📋 Dossier
                       </button>
 
-                      {student.status !== 'archived' ? (
+                      {student.status === 'active' ? (
                         <>
+                          <button 
+                            className="btn-small btn-danger" 
+                            onClick={() => handleOpenCheckout(student)}
+                            style={{ whiteSpace: 'nowrap' }}
+                            title="Vacate room & pass to Security Deposit Exchange"
+                          >
+                            🚪 Checkout Room
+                          </button>
                           <button className="btn-small" onClick={() => handleResetPassword(student._id)}>Reset</button>
-                          <button className="btn-small btn-danger" onClick={() => handleArchive(student._id)}>📦 Archive</button>
                         </>
+                      ) : student.status === 'pending_security_refund' ? (
+                        <span style={{ fontSize: '11px', color: '#fbbf24', fontWeight: '600', padding: '3px 6px', background: 'rgba(251, 191, 36, 0.1)', borderRadius: '4px', whiteSpace: 'nowrap' }}>
+                          ⏳ In Security Clearance
+                        </span>
                       ) : (
                         <button className="btn-small btn-success" onClick={() => handleReactivate(student._id)}>✓ Reactivate</button>
                       )}
@@ -425,6 +453,78 @@ function WardenStudents({ token }) {
                 if (modalState.onConfirm) modalState.onConfirm();
                 setModalState({ ...modalState, isOpen: false });
               }}>{modalState.isAlert ? 'OK' : 'Confirm'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Checkout & Vacate Room Modal */}
+      {checkoutModal.isOpen && checkoutModal.student && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.75)',
+          backdropFilter: 'blur(3px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1100
+        }}>
+          <div style={{
+            background: 'var(--bg-surface, #141414)',
+            padding: '24px',
+            borderRadius: '10px',
+            border: '1px solid var(--border-strong, #333)',
+            maxWidth: '460px',
+            width: '90%',
+            boxShadow: '0 10px 25px rgba(0,0,0,0.5)'
+          }}>
+            <h3 style={{ margin: '0 0 10px 0', color: 'var(--text-main, #fff)', fontSize: '17px' }}>
+              🚪 Vacate Room & Initiate Deposit Exchange
+            </h3>
+            <p style={{ fontSize: '13px', color: 'var(--text-muted, #aaa)', marginBottom: '16px', lineHeight: '1.5' }}>
+              Checking out <strong>{checkoutModal.student.name}</strong> will remove them from <strong>{checkoutModal.student.roomNumber ? `Room ${checkoutModal.student.roomNumber}` : 'Room Unassigned'}</strong> immediately, free the room, and transfer them to the <strong>Security Deposit Exchange</strong> list awaiting refund settlement.
+            </p>
+
+            <div className="form-group" style={{ marginBottom: '14px' }}>
+              <label style={{ fontSize: '12px', color: 'var(--text-muted, #aaa)', display: 'block', marginBottom: '4px' }}>Reason for Leaving Hostel</label>
+              <input 
+                type="text" 
+                value={checkoutModal.reason} 
+                onChange={(e) => setCheckoutModal({ ...checkoutModal, reason: e.target.value })} 
+                placeholder="e.g. Course completed, Relocating"
+                style={{ width: '100%', padding: '8px', borderRadius: '6px', background: 'var(--bg-hover, #222)', border: '1px solid var(--border-dim, #333)', color: '#fff' }}
+              />
+            </div>
+
+            <div className="form-group" style={{ marginBottom: '20px' }}>
+              <label style={{ fontSize: '12px', color: 'var(--text-muted, #aaa)', display: 'block', marginBottom: '4px' }}>Security Deposit Amount (₹)</label>
+              <input 
+                type="number" 
+                value={checkoutModal.depositAmount} 
+                onChange={(e) => setCheckoutModal({ ...checkoutModal, depositAmount: e.target.value })} 
+                style={{ width: '100%', padding: '8px', borderRadius: '6px', background: 'var(--bg-hover, #222)', border: '1px solid var(--border-dim, #333)', color: '#fff' }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button 
+                className="btn-secondary" 
+                onClick={() => setCheckoutModal({ isOpen: false, student: null, reason: '', depositAmount: 5000 })}
+                style={{ padding: '8px 16px', borderRadius: '6px', cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+              <button 
+                className="btn-danger" 
+                onClick={handleConfirmCheckout}
+                style={{ padding: '8px 18px', borderRadius: '6px', cursor: 'pointer', fontWeight: '600' }}
+              >
+                Vacate & Pass to Security List
+              </button>
             </div>
           </div>
         </div>

@@ -15,6 +15,7 @@ const studentRoutes = require('./routes/studentRoutes');
 const wardenExtendedRoutes = require('./routes/wardenExtendedRoutes');
 const aiRoutes = require('./routes/aiRoutes');
 const pollRoutes = require('./routes/pollRoutes');
+const securityDepositRoutes = require('./routes/securityDepositRoutes');
 
 const app = express();
 
@@ -65,6 +66,9 @@ app.use('/api/ai', aiRoutes);
 
 // Service Polls & Maintenance Updates (Plumber, Electrician, AC, Rent notices)
 app.use('/api/polls', pollRoutes);
+
+// Security Deposit Exchange & Clearance System (Hostel Exit & Refund Settlement)
+app.use('/api/security-deposits', securityDepositRoutes);
 
 // ============ ERROR HANDLING ============
 app.use((err, req, res, next) => {
