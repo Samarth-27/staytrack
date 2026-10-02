@@ -50,19 +50,28 @@ const processReceiptOCR = async (paymentId, screenshotUrl) => {
       }
     });
 
-    const ocrData = JSON.parse(response.text);
+    const cleanedText = response.text ? response.text.replace(/```json/g, '').replace(/```/g, '').trim() : '{}';
+    const ocrData = JSON.parse(cleanedText);
 
-    // Verify if AI thinks this is a valid matching payment
-    // For example, standard rent is Rs 3500. Let's do a basic check:
-    const verifiedByAI = ocrData.confidenceScore > 80 && ocrData.extractedAmount > 0;
+    let parsedDate = null;
+    if (ocrData.date) {
+      const d = new Date(ocrData.date);
+      if (!isNaN(d.getTime())) {
+        parsedDate = d;
+      }
+    }
+
+    const confidence = Number(ocrData.confidenceScore) || 0;
+    const amount = Number(ocrData.extractedAmount) || 0;
+    const verifiedByAI = confidence > 80 && amount > 0;
 
     await Payment.findByIdAndUpdate(paymentId, {
       ocrDetails: {
-        utr: ocrData.utr,
-        extractedAmount: ocrData.extractedAmount,
-        bankName: ocrData.bankName,
-        date: ocrData.date ? new Date(ocrData.date) : null,
-        confidenceScore: ocrData.confidenceScore,
+        utr: ocrData.utr || null,
+        extractedAmount: amount,
+        bankName: ocrData.bankName || null,
+        date: parsedDate,
+        confidenceScore: confidence,
         verifiedByAI
       }
     });

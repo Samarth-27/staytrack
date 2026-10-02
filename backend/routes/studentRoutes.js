@@ -38,7 +38,12 @@ router.put('/presence', verifyToken, checkRole(['student']), async (req, res) =>
 router.get('/profile', verifyToken, checkRole(['student']), async (req, res) => {
   try {
     const student = await User.findById(req.user.userId).select('-password');
-    const room = await Room.findOne({ roomNumber: student.roomNumber }).populate('students', '-password');
+    if (!student) return res.status(404).json({ message: 'Student not found' });
+
+    let room = null;
+    if (student.roomNumber) {
+      room = await Room.findOne({ roomNumber: student.roomNumber }).populate('students', '-password');
+    }
     res.json({ student, room });
   } catch (error) {
     res.status(500).json({ message: 'Error fetching profile', error: error.message });
@@ -52,8 +57,23 @@ router.get('/profile', verifyToken, checkRole(['student']), async (req, res) => 
 router.post('/complaint', verifyToken, checkRole(['student']), async (req, res) => {
   try {
     const { title, description, category, priority } = req.body;
+    if (!title || !description || !category) {
+      return res.status(400).json({ message: 'Title, description, and category are required' });
+    }
+
     const student = await User.findById(req.user.userId);
-    const room = await Room.findOne({ roomNumber: student.roomNumber });
+    if (!student) return res.status(404).json({ message: 'Student not found' });
+
+    let room = null;
+    if (student.roomNumber) {
+      room = await Room.findOne({ roomNumber: student.roomNumber });
+    }
+
+    if (!room) {
+      return res.status(400).json({ 
+        message: 'No valid room assigned. Please contact the warden to assign a room before submitting complaints.' 
+      });
+    }
 
     const complaint = new Complaint({
       student: req.user.userId,
@@ -61,7 +81,7 @@ router.post('/complaint', verifyToken, checkRole(['student']), async (req, res) 
       title,
       description,
       category,
-      priority
+      priority: priority || 'medium'
     });
 
     await complaint.save();

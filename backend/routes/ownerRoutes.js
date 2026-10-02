@@ -25,7 +25,7 @@ router.get('/dashboard', verifyToken, checkRole(['owner']), async (req, res) => 
     
     const totalPending = await Payment.aggregate([
       { $match: { status: 'pending' } },
-      { $group: { _id: null, total: { $sum: 3500 } } }
+      { $group: { _id: null, total: { $sum: { $add: ["$amount", { $ifNull: ["$penaltyAmount", 0] }] } } } }
     ]);
 
     const studentsInMess = await User.countDocuments({ role: 'student', status: 'active', presenceStatus: 'in_hostel' });

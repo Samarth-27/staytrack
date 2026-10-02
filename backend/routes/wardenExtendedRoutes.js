@@ -5,6 +5,7 @@ const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 const Payment = require('../models/Payment');
 const Complaint = require('../models/Complaint');
+const { verifyToken, checkRole } = require('../middleware/auth');
 const { 
   generateSecurePassword, 
   generatePaymentReport, 
@@ -12,13 +13,10 @@ const {
   generateComplaintReport 
 } = require('../utils/helpers');
 
-// Note: These routes should be protected by auth/role middleware in production
-// Assuming they are mounted after those middlewares, or using them inline if provided.
-
 // 1. STUDENT ARCHIVAL SYSTEM
 
 // Archive a student
-router.post('/warden/archive-student/:id', async (req, res) => {
+router.post('/warden/archive-student/:id', verifyToken, checkRole(['warden', 'owner']), async (req, res) => {
   try {
     const { reason } = req.body;
     const student = await User.findOne({ _id: req.params.id, role: 'student' });
@@ -26,20 +24,24 @@ router.post('/warden/archive-student/:id', async (req, res) => {
     if (!student) return res.status(404).json({ message: 'Student not found' });
     if (student.status === 'archived') return res.status(400).json({ message: 'Already archived' });
     
-    // Check pending payments
-    const pendingPayments = await Payment.countDocuments({ studentId: student._id, status: 'pending' });
+    // Check pending payments (schema field is 'student', not 'studentId')
+    const pendingPayments = await Payment.countDocuments({ student: student._id, status: 'pending' });
     if (pendingPayments > 0) {
       return res.status(400).json({ message: `Cannot archive: Student has ${pendingPayments} pending payments.` });
     }
     
-    // Check open complaints
-    const openComplaints = await Complaint.countDocuments({ studentId: student._id, status: { $in: ['open', 'in_progress'] } });
+    // Check open complaints (schema field is 'student', status can be 'open', 'in-progress', or 'in_progress')
+    const openComplaints = await Complaint.countDocuments({ 
+      student: student._id, 
+      status: { $in: ['open', 'in-progress', 'in_progress'] } 
+    });
     if (openComplaints > 0) {
       return res.status(400).json({ message: `Cannot archive: Student has ${openComplaints} open complaints.` });
     }
     
     // Archive
-    await student.archiveStudent(reason || 'Checkout', req.user ? req.user._id : null);
+    const wardenId = req.user ? (req.user.userId || req.user._id) : null;
+    await student.archiveStudent(reason || 'Checkout', wardenId);
     res.json({ message: 'Student archived successfully', student });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
@@ -47,7 +49,7 @@ router.post('/warden/archive-student/:id', async (req, res) => {
 });
 
 // Reactivate a student
-router.put('/warden/reactivate-student/:id', async (req, res) => {
+router.put('/warden/reactivate-student/:id', verifyToken, checkRole(['warden', 'owner']), async (req, res) => {
   try {
     const student = await User.findOne({ _id: req.params.id, role: 'student' });
     
@@ -65,7 +67,7 @@ router.put('/warden/reactivate-student/:id', async (req, res) => {
 // 2. PASSWORD MANAGEMENT SYSTEM
 
 // Individual password reset by Warden
-router.put('/warden/reset-password/:id', async (req, res) => {
+router.put('/warden/reset-password/:id', verifyToken, checkRole(['warden', 'owner']), async (req, res) => {
   try {
     const student = await User.findOne({ _id: req.params.id, role: 'student' });
     if (!student) return res.status(404).json({ message: 'Student not found' });
@@ -84,7 +86,7 @@ router.put('/warden/reset-password/:id', async (req, res) => {
 });
 
 // Bulk password reset by Warden
-router.post('/warden/bulk-reset-passwords', async (req, res) => {
+router.post('/warden/bulk-reset-passwords', verifyToken, checkRole(['warden', 'owner']), async (req, res) => {
   try {
     const { studentIds } = req.body;
     if (!studentIds || !Array.isArray(studentIds)) {
@@ -108,19 +110,19 @@ router.post('/warden/bulk-reset-passwords', async (req, res) => {
 });
 
 // Student change password
-router.put('/student/change-password', async (req, res) => {
+router.put('/student/change-password', verifyToken, checkRole(['student']), async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
-    // Assume req.user contains the authenticated student
-    if (!req.user) return res.status(401).json({ message: 'Unauthorized' });
+    const userId = req.user ? (req.user.userId || req.user._id) : null;
+    if (!userId) return res.status(401).json({ message: 'Unauthorized' });
     
-    const student = await User.findById(req.user._id);
+    const student = await User.findById(userId);
     if (!student) return res.status(404).json({ message: 'User not found' });
     
     const isMatch = await student.comparePassword(currentPassword);
     if (!isMatch) return res.status(400).json({ message: 'Current password is incorrect' });
     
-    if (newPassword.length < 6) {
+    if (!newPassword || newPassword.length < 6) {
       return res.status(400).json({ message: 'New password must be at least 6 characters' });
     }
     
@@ -136,7 +138,7 @@ router.put('/student/change-password', async (req, res) => {
 
 // 3. ADVANCED REPORTING & ANALYTICS
 
-router.get('/warden/report/payments', async (req, res) => {
+router.get('/warden/report/payments', verifyToken, checkRole(['warden', 'owner']), async (req, res) => {
   try {
     const payments = await Payment.find().populate('student', 'name email _id');
     const reportData = generatePaymentReport(payments);
@@ -154,7 +156,7 @@ router.get('/warden/report/payments', async (req, res) => {
   }
 });
 
-router.get('/warden/report/students', async (req, res) => {
+router.get('/warden/report/students', verifyToken, checkRole(['warden', 'owner']), async (req, res) => {
   try {
     const status = req.query.status || 'active';
     const query = { role: 'student' };
@@ -171,7 +173,7 @@ router.get('/warden/report/students', async (req, res) => {
   }
 });
 
-router.get('/warden/report/complaints', async (req, res) => {
+router.get('/warden/report/complaints', verifyToken, checkRole(['warden', 'owner']), async (req, res) => {
   try {
     const complaints = await Complaint.find().populate('student', 'name roomNumber');
     const reportData = generateComplaintReport(complaints);
@@ -179,7 +181,7 @@ router.get('/warden/report/complaints', async (req, res) => {
     const stats = {
       total: complaints.length,
       open: complaints.filter(c => c.status === 'open').length,
-      inProgress: complaints.filter(c => c.status === 'in_progress').length,
+      inProgress: complaints.filter(c => ['in-progress', 'in_progress'].includes(c.status)).length,
       resolved: complaints.filter(c => c.status === 'resolved').length
     };
     
@@ -189,7 +191,7 @@ router.get('/warden/report/complaints', async (req, res) => {
   }
 });
 
-router.get('/warden/report/revenue', async (req, res) => {
+router.get('/warden/report/revenue', verifyToken, checkRole(['warden', 'owner']), async (req, res) => {
   try {
     const payments = await Payment.find({ status: 'paid' });
     
@@ -211,9 +213,7 @@ router.get('/warden/report/revenue', async (req, res) => {
   }
 });
 
-module.exports = router;
-
-// New route to display image without bloated JSON payloads
+// Route to display image without bloated JSON payloads
 router.get('/payment/:id/screenshot', async (req, res) => {
   try {
     const payment = await Payment.findById(req.params.id);
@@ -254,3 +254,6 @@ router.get('/payment/:id/screenshot', async (req, res) => {
     res.status(500).send('Error loading screenshot: ' + error.message);
   }
 });
+
+module.exports = router;
+

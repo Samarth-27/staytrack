@@ -28,14 +28,19 @@ const analyzeComplaint = async (complaintId, title, description) => {
       }
     });
 
-    const aiResult = JSON.parse(response.text);
+    const cleanedText = response.text ? response.text.replace(/```json/g, '').replace(/```/g, '').trim() : '{}';
+    const aiResult = JSON.parse(cleanedText);
+
+    const validSeverities = ['low', 'medium', 'high', 'critical'];
+    const normalizedSeverity = (aiResult.severity || '').toLowerCase();
+    const severity = validSeverities.includes(normalizedSeverity) ? normalizedSeverity : 'medium';
 
     await Complaint.findByIdAndUpdate(complaintId, {
       aiAnalysis: {
-        severity: aiResult.severity,
-        suggestedStaff: aiResult.suggestedStaff,
-        estimatedResolutionTime: aiResult.estimatedResolutionTime,
-        confidenceScore: aiResult.confidenceScore
+        severity,
+        suggestedStaff: aiResult.suggestedStaff || 'Staff',
+        estimatedResolutionTime: aiResult.estimatedResolutionTime || '24-48 hours',
+        confidenceScore: Number(aiResult.confidenceScore) || 85
       }
     });
 

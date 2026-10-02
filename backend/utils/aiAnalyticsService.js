@@ -28,11 +28,17 @@ const generateMonthlyReport = async (month) => {
     }
   });
 
+  const [yearStr, monthStr] = (month || '').split('-');
+  const year = parseInt(yearStr, 10) || new Date().getFullYear();
+  const monthNum = parseInt(monthStr, 10) || (new Date().getMonth() + 1);
+  const startDate = new Date(Date.UTC(year, monthNum - 1, 1, 0, 0, 0));
+  const endDate = new Date(Date.UTC(year, monthNum, 1, 0, 0, 0));
+
   const complaintStats = await Complaint.aggregate([
     { $match: { 
         createdAt: { 
-          $gte: new Date(`${month}-01`), 
-          $lt: new Date(`${month}-31T23:59:59.999Z`) 
+          $gte: startDate, 
+          $lt: endDate 
         } 
       } 
     },
@@ -133,7 +139,8 @@ const generatePredictions = async () => {
       contents: prompt,
       config: { responseMimeType: "application/json" }
     });
-    return JSON.parse(response.text);
+    const cleanedText = response.text ? response.text.replace(/```json/g, '').replace(/```/g, '').trim() : '{}';
+    return JSON.parse(cleanedText);
   } catch (error) {
     console.error('Error generating AI predictions:', error);
     return null;

@@ -144,6 +144,7 @@ router.put('/complaint/:id', verifyToken, checkRole(['warden']), async (req, res
       { status, wardenResponse, resolvedAt: status === 'resolved' ? Date.now() : null },
       { new: true }
     );
+    if (!complaint) return res.status(404).json({ message: 'Complaint not found' });
     res.json(complaint);
   } catch (error) {
     res.status(500).json({ message: 'Error updating complaint', error: error.message });
@@ -175,6 +176,10 @@ router.get('/payments', verifyToken, checkRole(['warden']), async (req, res) => 
 router.put('/payment/:id', verifyToken, checkRole(['warden']), async (req, res) => {
   try {
     const existingPayment = await Payment.findById(req.params.id);
+    if (!existingPayment) {
+      return res.status(404).json({ message: 'Payment not found' });
+    }
+
     let updateFields = { status: 'paid', paidDate: Date.now() };
     
     // If it was a manual mark-paid from pending (meaning physical cash), assign full amount to cash
@@ -212,6 +217,7 @@ router.put('/payment/:id/reject', verifyToken, checkRole(['warden']), async (req
       },
       { new: true }
     );
+    if (!payment) return res.status(404).json({ message: 'Payment not found' });
     res.json(payment);
   } catch (error) {
     res.status(500).json({ message: 'Error rejecting payment', error: error.message });
@@ -232,6 +238,7 @@ router.put('/payment/:id/waive-penalty', verifyToken, checkRole(['warden']), asy
       },
       { new: true }
     );
+    if (!payment) return res.status(404).json({ message: 'Payment not found' });
     res.json(payment);
   } catch (error) {
     res.status(500).json({ message: 'Error waiving penalty', error: error.message });

@@ -49,7 +49,11 @@ function WardenStudents({ token }) {
   const handleCreateStudent = async (e) => {
     e.preventDefault();
     try {
-      await axios.post(`${API_URL}/auth/register`, { ...newStudent, role: 'student' });
+      await axios.post(
+        `${API_URL}/auth/register`, 
+        { ...newStudent, role: 'student' }, 
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
       showMessage('✓ Student created successfully!', 'success');
       setNewStudent({ name: '', username: '', password: '', roomNumber: '' });
       setShowForm(false);
