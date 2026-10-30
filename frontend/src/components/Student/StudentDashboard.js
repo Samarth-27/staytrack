@@ -62,7 +62,7 @@ function StudentDashboard({ user, token, onLogout }) {
       <div className="content">
         {activeTab === 'profile' && <StudentProfile token={token} />}
         {activeTab === 'complaints' && <StudentComplaints token={token} />}
-        {activeTab === 'payments' && <StudentPayments token={token} />}
+        {activeTab === 'payments' && <StudentPayments token={token} user={user} />}
         {activeTab === 'polls' && <StudentPolls token={token} />}
         {activeTab === 'notices' && <StudentNotices token={token} />}
       </div>

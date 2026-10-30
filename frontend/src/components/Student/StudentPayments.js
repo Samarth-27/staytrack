@@ -1,13 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { API_BASE_URL } from '../../api/config';
+import { generateFeeReceiptPDF, formatMonthName } from '../../utils/feeReceiptGenerator';
 
 const API_URL = API_BASE_URL;
 
-function StudentPayments({ token }) {
+function StudentPayments({ token, user }) {
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [downloadingId, setDownloadingId] = useState(null);
+  const [receiptToast, setReceiptToast] = useState(null);
+
   const [form, setForm] = useState({
     month: new Date().toISOString().slice(0, 7),
     messTransactionId: '',
@@ -35,9 +39,9 @@ function StudentPayments({ token }) {
     setShowForm(true);
   };
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     fetchPayments();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchPayments = async () => {
@@ -109,8 +113,6 @@ function StudentPayments({ token }) {
     }
   };
 
-
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     const penalty = form.penaltyAmount || 0;
@@ -138,17 +140,71 @@ function StudentPayments({ token }) {
     }
   };
 
+  const handleDownloadReceipt = (payment) => {
+    try {
+      setDownloadingId(payment._id);
+      const { fileName, receiptNumber } = generateFeeReceiptPDF(payment, user, { action: 'download' });
+      setReceiptToast({
+        type: 'success',
+        text: `Fee Receipt #${receiptNumber} for ${formatMonthName(payment.month)} downloaded successfully (${fileName})!`
+      });
+      setTimeout(() => {
+        setReceiptToast(null);
+      }, 6000);
+    } catch (err) {
+      console.error('Error generating fee receipt:', err);
+      alert('Failed to generate fee receipt PDF: ' + (err.message || 'Unknown error'));
+    } finally {
+      setDownloadingId(null);
+    }
+  };
+
   if (loading) return <div className="loading">Loading payments...</div>;
 
-  const totalPaid = payments.filter(p => p.status === 'paid').reduce((sum, p) => sum + p.amount, 0);
+  const paidPayments = payments.filter(p => p.status === 'paid');
+  const totalPaid = paidPayments.reduce((sum, p) => sum + (p.amount || 8500) + (p.penaltyAmount || 0), 0);
+  const latestPaid = paidPayments.length > 0 ? paidPayments[0] : null;
 
   return (
     <div className="payments-container">
       <div className="summary-cards">
-        <div className="card"><h4>Standard Rent</h4><p className="amount">₹8500</p></div>
-        <div className="card pending"><h4>Pending Months</h4><p className="amount">{payments.filter(p => p.status === 'pending').length}</p></div>
-        <div className="card paid"><h4>Total Paid</h4><p className="amount">₹{totalPaid}</p></div>
+        <div className="card">
+          <h4>Standard Rent</h4>
+          <p className="amount">₹8500</p>
+        </div>
+        <div className="card pending">
+          <h4>Pending Months</h4>
+          <p className="amount">{payments.filter(p => p.status === 'pending').length}</p>
+        </div>
+        <div className="card paid">
+          <h4>Total Paid</h4>
+          <p className="amount">₹{totalPaid}</p>
+        </div>
+        {latestPaid && (
+          <div className="card receipt-summary-card">
+            <h4>Official Receipt</h4>
+            <button 
+              type="button"
+              className="btn-quick-receipt"
+              onClick={() => handleDownloadReceipt(latestPaid)}
+              disabled={downloadingId === latestPaid._id}
+              title={`Download official fee receipt for ${formatMonthName(latestPaid.month)}`}
+            >
+              📄 {downloadingId === latestPaid._id ? 'Generating...' : `Latest (${formatMonthName(latestPaid.month)})`}
+            </button>
+          </div>
+        )}
       </div>
+
+      {receiptToast && (
+        <div className={`receipt-toast ${receiptToast.type}`}>
+          <div className="toast-content">
+            <span className="toast-icon">✓</span>
+            <span>{receiptToast.text}</span>
+          </div>
+          <button className="toast-dismiss" onClick={() => setReceiptToast(null)}>✕</button>
+        </div>
+      )}
 
       <div style={{ margin: '20px 0' }}>
         <button className="btn-primary" onClick={() => setShowForm(!showForm)}>
@@ -270,7 +326,13 @@ function StudentPayments({ token }) {
       )}
 
       <div className="payment-history">
-        <h3>Payment History</h3>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
+          <h3>Payment History & Receipts</h3>
+          <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
+            Official PDF receipts are unlocked instantly upon payment verification.
+          </span>
+        </div>
+
         <table className="data-table">
           <thead>
             <tr>
@@ -281,21 +343,25 @@ function StudentPayments({ token }) {
               <th>Status</th>
               <th>Date</th>
               <th>Proof</th>
-              <th>Action</th>
+              <th style={{ textAlign: 'center' }}>Action / Receipt</th>
             </tr>
           </thead>
           <tbody>
             {payments.length > 0 ? (
               payments.map(payment => (
                 <tr key={payment._id}>
-                  <td>{payment.month}</td>
+                  <td><strong>{payment.month}</strong></td>
                   <td>₹{payment.onlineAmount || 0}</td>
                   <td>₹{payment.cashAmount || 0}</td>
                   <td className="amount">
                     <strong>₹{(payment.amount || 8500) + (payment.penaltyAmount || 0)}</strong>
                     {payment.penaltyAmount > 0 && <div style={{fontSize:'12px', color:'red'}}>Inc. ₹{payment.penaltyAmount} Late Fee</div>}
                   </td>
-                  <td><span className={`status ${payment.status}`}>{payment.status === 'pending' ? 'Pending' : payment.status === 'pending_verification' ? '🔍 Under Review' : '✓ Paid'}</span></td>
+                  <td>
+                    <span className={`status ${payment.status}`}>
+                      {payment.status === 'pending' ? 'Pending' : payment.status === 'pending_verification' ? '🔍 Under Review' : '✓ Paid'}
+                    </span>
+                  </td>
                   <td>{payment.paidDate ? new Date(payment.paidDate).toLocaleDateString() : '-'}</td>
                   <td>
                     {payment.hasScreenshot ? (
@@ -306,13 +372,23 @@ function StudentPayments({ token }) {
                       </div>
                     ) : 'No Proof'}
                   </td>
-                  <td>
+                  <td style={{ textAlign: 'center' }}>
                     {payment.status === 'pending' ? (
                       <button className="btn-small" onClick={() => handlePayNow(payment)}>Pay Now</button>
                     ) : payment.status === 'pending_verification' ? (
-                      <span className="pending">Under Review</span>
+                      <span className="pending" style={{ fontSize: '12px' }}>Under Review</span>
                     ) : (
-                      <span className="completed">✓ Paid</span>
+                      <div style={{ display: 'inline-flex', flexDirection: 'column', gap: '6px', alignItems: 'center' }}>
+                        <button
+                          type="button"
+                          className="btn-download-receipt"
+                          onClick={() => handleDownloadReceipt(payment)}
+                          disabled={downloadingId === payment._id}
+                          title="Download Official PDF Fee Receipt"
+                        >
+                          {downloadingId === payment._id ? '⏳ Preparing...' : '📄 Receipt (PDF)'}
+                        </button>
+                      </div>
                     )}
                   </td>
                 </tr>

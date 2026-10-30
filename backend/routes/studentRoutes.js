@@ -377,6 +377,8 @@ router.get('/payments', verifyToken, checkRole(['student']), async (req, res) =>
     await generateMissingPayments();
 
     const payments = await Payment.find({ student: req.user.userId })
+      .populate('student', 'name email roomNumber phone enrollmentNumber collegeName')
+      .populate('room', 'roomNumber block floor')
       .select('-screenshotUrl')
       .sort({ createdAt: -1 });
 
