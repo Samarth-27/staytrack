@@ -1,6 +1,6 @@
 // backend/utils/aiNotificationService.js
 const nodemailer = require('nodemailer');
-const aiClient = require('./geminiClient');
+const aiClient = require('./groqClient');
 const Payment = require('../models/Payment');
 const User = require('../models/User');
 require('dotenv').config({ path: '../.env' });
@@ -39,7 +39,7 @@ const sendSmartPaymentReminders = async () => {
       `;
 
       const response = await aiClient.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: 'llama-3.3-70b-versatile',
         contents: prompt
       });
 

@@ -1,6 +1,6 @@
 # StayTrack AI Architecture
 
-Welcome to the AI-Powered Hostel Operating System. This document explains how the AI capabilities are integrated into the existing StayTrack infrastructure.
+Welcome to the AI-Powered Hostel Operating System. This document explains how the AI capabilities are integrated into the existing StayTrack infrastructure powered by **Groq High-Speed LLM Inference**.
 
 ## Core Design Principles
 1. **Agentic Architecture:** The AI is not just a chatbot. It is a Central Router that can choose to retrieve knowledge (RAG) or call internal backend APIs (Tool Calling) based on the user's intent.
@@ -13,7 +13,7 @@ Welcome to the AI-Powered Hostel Operating System. This document explains how th
 Located in `frontend/src/components/AIChatWidget.js`.
 - A floating React component accessible on Warden and Owner dashboards.
 - Sends prompts to `POST /api/ai/chat`.
-- The `aiRouter.js` processes the request, loads session memory from MongoDB (`AIMemory`), and assigns a role-specific system prompt.
+- The `aiRouter.js` processes the request, loads session memory from MongoDB (`AIMemory`), and assigns a role-specific system prompt using `llama-3.3-70b-versatile` on Groq.
 
 ## 2. Tool Calling (Function Calling)
 Located in `backend/utils/aiTools.js`.
@@ -33,7 +33,7 @@ Located in `backend/utils/aiComplaintAnalyzer.js`.
 ## 5. Automated Receipt OCR
 Located in `backend/utils/aiOcrService.js`.
 - Triggered asynchronously when a student uploads a payment screenshot.
-- Uses Gemini Vision (`gemini-2.5-flash`) to parse the image, extract UTR, Bank Name, and Amount, and updates the payment's `ocrDetails`.
+- Uses Groq Vision (`llama-3.2-11b-vision-preview`) to parse the image, extract UTR, Bank Name, and Amount, and updates the payment's `ocrDetails`.
 
 ## 6. Smart Notifications & Reporting
 - **Notifications:** `aiNotificationService.js` queries pending payments and uses the LLM to draft personalized, professional reminder emails, dispatched via Nodemailer.
@@ -42,9 +42,9 @@ Located in `backend/utils/aiOcrService.js`.
 ---
 
 ## Environment Variables
-To enable these features, ensure your backend `.env` has:
+To enable these features, ensure your backend `.env` (and Render dashboard) has:
 ```
-GEMINI_API_KEY=your_google_ai_studio_api_key
+GROQ_API_KEY=gsk_your_groq_api_key_here
 EMAIL_USER=your_email@gmail.com
 EMAIL_PASS=your_app_password
 ```

@@ -11,12 +11,12 @@ const aiLimiter = rateLimit({
   message: { message: 'Too many AI requests from this IP, please try again after 15 minutes.' }
 });
 
-const aiClientInstance = require('../utils/geminiClient');
+const aiClientInstance = require('../utils/groqClient');
 const router = express.Router();
 
 router.use((req, res, next) => {
   if (!aiClientInstance) {
-    return res.status(503).json({ message: 'AI features are currently disabled because the server is missing the GEMINI_API_KEY configuration.' });
+    return res.status(503).json({ message: 'AI features are currently disabled because the server is missing the GROQ_API_KEY configuration.' });
   }
   next();
 });
@@ -96,7 +96,7 @@ router.post('/notifications/remind-fees', verifyToken, checkRole(['warden', 'own
 const Payment = require('../models/Payment');
 const Complaint = require('../models/Complaint');
 const Room = require('../models/Room');
-const aiClient = require('../utils/geminiClient');
+const aiClient = require('../utils/groqClient');
 
 /**
  * GET /api/ai/reports/warden-summary
@@ -127,7 +127,7 @@ router.get('/reports/warden-summary', verifyToken, checkRole(['warden', 'owner']
     `;
 
     const response = await aiClient.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'llama-3.3-70b-versatile',
       contents: prompt
     });
 

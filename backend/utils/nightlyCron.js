@@ -1,5 +1,5 @@
 const cron = require('node-cron');
-const aiClient = require('./geminiClient');
+const aiClient = require('./groqClient');
 const Payment = require('../models/Payment');
 const Complaint = require('../models/Complaint');
 const Room = require('../models/Room');
@@ -37,7 +37,7 @@ const generateProactiveBriefing = async () => {
     `;
 
     const response = await aiClient.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'llama-3.3-70b-versatile',
       contents: prompt
     });
 

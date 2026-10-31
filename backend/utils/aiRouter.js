@@ -1,5 +1,5 @@
 // backend/utils/aiRouter.js
-const aiClient = require('./geminiClient');
+const aiClient = require('./groqClient');
 const { getSessionMemory, addMessageToMemory } = require('./aiMemoryService');
 const { retrieveRelevantContext } = require('./ragService');
 
@@ -93,7 +93,7 @@ Whenever any operation or tool returns an error, or if required details are miss
 You MUST respond using this exact format:
 "You have encountered an error: [state the specific error or missing detail]. Please correct your details ([state exactly what needs to be provided or corrected]) and try again."`;
 
-  // 3. Prepare full conversation context for Gemini
+  // 3. Prepare full conversation context for Groq
   // In the genai SDK, we construct contents array.
   let contents = pastMessages.map(msg => ({
     role: msg.role === 'assistant' ? 'model' : 'user',
@@ -112,7 +112,7 @@ You MUST respond using this exact format:
     
     // 5. Call LLM (using the latest Google GenAI SDK interface)
     let response = await aiClient.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'llama-3.3-70b-versatile',
       contents: contents,
       config: {
         systemInstruction: systemPrompt,
@@ -150,7 +150,7 @@ You MUST respond using this exact format:
 
       // Call LLM again to synthesize the final response or decide next tool
       response = await aiClient.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: 'llama-3.3-70b-versatile',
         contents: contents,
         config: {
           systemInstruction: systemPrompt,

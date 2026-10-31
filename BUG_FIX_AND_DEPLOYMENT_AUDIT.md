@@ -118,7 +118,7 @@ This report documents all bugs identified and resolved across the StayTrack repo
 ### 6. AI JSON Sanitization & Date CastError
 - **Location**: `backend/utils/aiOcrService.js` & `backend/utils/aiComplaintAnalyzer.js`
 - **Root Cause**:
-  1. Even with `responseMimeType: "application/json"`, Gemini models can sometimes output markdown fences (e.g. ````json ... ````). Calling `JSON.parse(response.text)` directly led to `SyntaxError: Unexpected token '` in JSON`.
+  1. Even with `responseMimeType: "application/json"`, LLM models can sometimes output markdown fences (e.g. ````json ... ````). Calling `JSON.parse(response.text)` directly led to `SyntaxError: Unexpected token '` in JSON`.
   2. In OCR, receipts can produce fuzzy date strings (e.g. `"N/A"` or `"Yesterday"`). Executing `new Date(ocrData.date)` on an unparseable string produced `Invalid Date`, which caused Mongoose to throw `CastError: Cast to date failed`.
 - **Fix**:
   - Cleaned markdown code blocks prior to parsing: `response.text.replace(/```json/g, '').replace(/```/g, '').trim()`.

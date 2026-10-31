@@ -1,9 +1,9 @@
 // backend/utils/aiOcrService.js
-const aiClient = require('./geminiClient');
+const aiClient = require('./groqClient');
 const Payment = require('../models/Payment');
 
 /**
- * Perform OCR on a payment receipt using Gemini Vision capabilities
+ * Perform OCR on a payment receipt using Groq Vision capabilities
  * @param {string} paymentId - ID of the payment record
  * @param {string} screenshotUrl - Base64 data URI or image URL
  */
@@ -41,7 +41,7 @@ const processReceiptOCR = async (paymentId, screenshotUrl) => {
     `;
 
     const response = await aiClient.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'llama-3.3-70b-versatile',
       contents: [
         { role: 'user', parts: [ { text: prompt }, { inlineData } ] }
       ],

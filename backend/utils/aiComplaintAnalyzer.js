@@ -1,5 +1,5 @@
 // backend/utils/aiComplaintAnalyzer.js
-const aiClient = require('./geminiClient');
+const aiClient = require('./groqClient');
 const Complaint = require('../models/Complaint');
 
 const analyzeComplaint = async (complaintId, title, description) => {
@@ -21,7 +21,7 @@ const analyzeComplaint = async (complaintId, title, description) => {
     `;
 
     const response = await aiClient.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'llama-3.3-70b-versatile',
       contents: prompt,
       config: {
         responseMimeType: "application/json",

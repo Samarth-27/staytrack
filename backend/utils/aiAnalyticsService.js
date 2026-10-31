@@ -1,5 +1,5 @@
 // backend/utils/aiAnalyticsService.js
-const aiClient = require('./geminiClient');
+const aiClient = require('./groqClient');
 const Payment = require('../models/Payment');
 const Complaint = require('../models/Complaint');
 const Room = require('../models/Room');
@@ -93,7 +93,7 @@ const generateMonthlyReport = async (month) => {
 
   try {
     const response = await aiClient.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'llama-3.3-70b-versatile',
       contents: prompt,
     });
     
@@ -135,7 +135,7 @@ const generatePredictions = async () => {
 
   try {
     const response = await aiClient.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'llama-3.3-70b-versatile',
       contents: prompt,
       config: { responseMimeType: "application/json" }
     });

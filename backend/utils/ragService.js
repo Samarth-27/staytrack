@@ -1,6 +1,6 @@
 // backend/utils/ragService.js
 const KnowledgeDocument = require('../models/KnowledgeDocument');
-const aiClient = require('./geminiClient');
+const aiClient = require('./groqClient');
 
 function cosineSimilarity(A, B) {
   let dotProduct = 0, normA = 0, normB = 0;
@@ -20,7 +20,7 @@ const retrieveRelevantContext = async (query) => {
     if (aiClient) {
       try {
         const embedResponse = await aiClient.models.embedContent({
-          model: 'gemini-embedding-2',
+          model: 'llama-3.3-70b-versatile',
           contents: query
         });
         const queryVector = embedResponse.embeddings[0].values;

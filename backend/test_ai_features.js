@@ -34,8 +34,8 @@ async function runTests() {
 
   // 1. Check AI Initialization
   console.log("--- Initializing AI ---");
-  if (!process.env.GEMINI_API_KEY) {
-    console.warn("⚠️ Warning: GEMINI_API_KEY is missing. Testing graceful degradation...");
+  if (!process.env.GROQ_API_KEY) {
+    console.warn("⚠️ Warning: GROQ_API_KEY is missing. Testing graceful degradation...");
     assert(aiClient === null, "AI Client should gracefully degrade to null when key is missing.");
   } else {
     assert(aiClient !== null, "AI Client successfully initialized.");
@@ -53,7 +53,7 @@ async function runTests() {
   try {
     // 2. Test Router Access Control (RBAC Simulation)
     console.log("\n--- Testing AI Router (RBAC & Agent) ---");
-    // We don't actually call Gemini here to save tokens, just validating the wrapper logic
+    // We don't actually call Groq here to save tokens, just validating the wrapper logic
     assert(typeof processAIRequest === 'function', "processAIRequest is defined and exported.");
 
     // 3. Test Analytics
