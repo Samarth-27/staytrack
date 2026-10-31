@@ -144,20 +144,22 @@ router.get('/analytics/predictions', verifyToken, checkRole(['owner', 'warden'])
 
 /**
  * GET /api/ai/reports/warden-summary
- * Generates an HTML report for the warden
+ * Generates an HTML operational report for the warden
  */
 router.get('/reports/warden-summary', verifyToken, checkRole(['warden', 'owner']), async (req, res) => {
   try {
-    const complaints = await Complaint.find().populate('student', 'name');
+    const complaints = await Complaint.find().populate('student', 'name roomNumber');
     const rooms = await Room.find();
     
     const openComplaints = complaints.filter(c => c.status !== 'resolved');
     const vacantRooms = rooms.filter(r => r.status === 'vacant').length;
+    const highPriorityIssues = openComplaints.filter(c => c.priority === 'high');
 
     const dataSnapshot = `
       Active Complaints: ${openComplaints.length}
       Vacant Rooms: ${vacantRooms}
-      High Priority Issues: ${openComplaints.filter(c => c.priority === 'high').length}
+      High Priority Issues: ${highPriorityIssues.length}
+      Total Rooms: ${rooms.length}
     `;
 
     const prompt = `
@@ -170,12 +172,48 @@ router.get('/reports/warden-summary', verifyToken, checkRole(['warden', 'owner']
       ${dataSnapshot}
     `;
 
-    const response = await aiClientInstance.models.generateContent({
-      contents: prompt
-    });
+    let htmlReport = '';
+    try {
+      const response = await aiClientInstance.models.generateContent({
+        contents: prompt
+      });
+      if (response && response.text) {
+        htmlReport = response.text.replace(/```html/g, '').replace(/```/g, '').trim();
+      }
+    } catch (aiErr) {
+      console.warn('AI report generation fallback triggered:', aiErr.message);
+    }
 
-    res.send(response.text.replace(/\`\`\`html/g, '').replace(/\`\`\`/g, ''));
+    // Graceful fallback: Deliver structured operational report directly from MongoDB snapshot
+    if (!htmlReport) {
+      htmlReport = `
+        <h1>StayTrack Hostel Operational Status Report</h1>
+        <p><strong>Generated for:</strong> Warden Operations Administration</p>
+        <p><strong>Date:</strong> ${new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+        
+        <h2>Current Operational Overview</h2>
+        <ul>
+          <li><strong>Active Open Complaints:</strong> ${openComplaints.length} tickets</li>
+          <li><strong>High Priority Urgent Issues:</strong> ${highPriorityIssues.length} tickets</li>
+          <li><strong>Available Vacant Rooms:</strong> ${vacantRooms} rooms</li>
+          <li><strong>Total Rooms Managed:</strong> ${rooms.length} rooms</li>
+        </ul>
+
+        <h2>Predictive Maintenance & Inspection Recommendations</h2>
+        <p>${highPriorityIssues.length > 0 ? `<strong>Immediate Attention Required:</strong> ${highPriorityIssues.length} high-priority tickets are pending. Staff should prioritize inspection of affected suites.` : 'No critical emergencies detected. Routine maintenance cycles are on schedule.'}</p>
+        <p>${vacantRooms > 0 ? `<strong>Occupancy Optimization:</strong> ${vacantRooms} rooms are vacant and ready for student allocation or deep cleaning.` : 'Hostel is operating near peak capacity.'}</p>
+
+        <h2>Recent Complaint Log Summary</h2>
+        <ul>
+          ${openComplaints.slice(0, 5).map(c => `<li><strong>${c.title}</strong> (${c.category || 'General'}) - Status: <em>${c.status}</em></li>`).join('') || '<li>All student complaints are currently resolved.</li>'}
+        </ul>
+      `;
+    }
+
+    res.setHeader('Content-Type', 'text/html');
+    res.send(htmlReport);
   } catch (error) {
+    console.error('Error generating warden report:', error);
     res.status(500).json({ message: 'Error generating report', error: error.message });
   }
 });

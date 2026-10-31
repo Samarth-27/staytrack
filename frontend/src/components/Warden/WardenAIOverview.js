@@ -46,37 +46,98 @@ function WardenAIOverview({ token }) {
 
   const handleGenerateReport = async () => {
     setGeneratingReport(true);
+
+    // Open a blank window synchronously on user click to prevent browser pop-up blocking
+    let reportWindow = null;
+    try {
+      reportWindow = window.open('', '_blank');
+      if (reportWindow) {
+        reportWindow.document.write(`
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <meta charset="utf-8">
+              <title>StayTrack AI Report - Generating...</title>
+            </head>
+            <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; display: flex; align-items: center; justify-content: center; height: 85vh; margin: 0; background: #0f172a; color: #f8fafc;">
+              <div style="text-align: center; max-width: 480px; padding: 24px;">
+                <div style="font-size: 36px; margin-bottom: 12px; animation: pulse 1.5s infinite;">🤖</div>
+                <h2 style="margin: 0 0 10px 0; font-size: 22px; color: #38bdf8;">Generating StayTrack AI Report</h2>
+                <p style="margin: 0; font-size: 14px; color: #94a3b8; line-height: 1.5;">Analyzing real-time hostel occupancy, active complaints, and predictive maintenance schedules...</p>
+              </div>
+            </body>
+          </html>
+        `);
+      }
+    } catch (_) {
+      // Browser blocked window.open synchronously
+    }
+
     try {
       const response = await axios.get(`${API_URL}/ai/reports/warden-summary`, { 
         headers: { Authorization: `Bearer ${token}` },
         responseType: 'text' // Since it returns HTML
       });
       
-      const reportWindow = window.open('', '_blank');
-      reportWindow.document.write(`
+      const fullHtml = `
+        <!DOCTYPE html>
         <html>
           <head>
-            <title>StayTrack AI Report</title>
+            <meta charset="utf-8">
+            <title>StayTrack AI Warden Operational Report</title>
             <style>
-              body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; color: #333; line-height: 1.6; }
-              h1 { color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px; }
-              h2 { color: #2980b9; margin-top: 30px; }
-              .footer { margin-top: 50px; font-size: 12px; color: #7f8c8d; text-align: center; }
+              body { font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif; padding: 40px; color: #1e293b; line-height: 1.6; max-width: 860px; margin: 0 auto; background: #ffffff; }
+              h1 { color: #0f172a; border-bottom: 2px solid #3b82f6; padding-bottom: 10px; margin-bottom: 20px; font-size: 26px; }
+              h2 { color: #1d4ed8; margin-top: 30px; font-size: 20px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; }
+              ul { padding-left: 20px; }
+              li { margin-bottom: 8px; }
+              p { margin-bottom: 14px; }
+              strong { color: #0f172a; }
+              .header-meta { background: #f8fafc; border-left: 4px solid #3b82f6; padding: 12px 16px; margin-bottom: 24px; border-radius: 4px; font-size: 14px; }
+              .footer { margin-top: 50px; font-size: 12px; color: #64748b; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 16px; }
+              @media print {
+                body { padding: 20px; }
+                .no-print { display: none; }
+              }
             </style>
           </head>
           <body>
+            <div class="header-meta">
+              <strong>StayTrack Enterprise AI Copilot</strong> &bull; Official Warden Operational Status Report
+            </div>
             ${response.data}
-            <div class="footer">Generated automatically by StayTrack Enterprise AI Copilot on ${new Date().toLocaleString()}</div>
+            <div class="footer">Generated automatically by StayTrack Enterprise AI Copilot on ${new Date().toLocaleString('en-IN')}</div>
             <script>
               window.onload = function() { window.print(); }
             </script>
           </body>
         </html>
-      `);
-      reportWindow.document.close();
+      `;
+
+      if (reportWindow && !reportWindow.closed) {
+        reportWindow.document.open();
+        reportWindow.document.write(fullHtml);
+        reportWindow.document.close();
+      } else {
+        // Fallback: If popup was blocked, create blob and open/download
+        const blob = new Blob([fullHtml], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        const fallbackWindow = window.open(url, '_blank');
+        if (!fallbackWindow) {
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `StayTrack-AI-Warden-Report-${new Date().toISOString().slice(0, 10)}.html`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        }
+      }
     } catch (error) {
       console.error("Failed to generate report:", error);
-      alert("Failed to generate AI report. Please check if the backend is running.");
+      if (reportWindow && !reportWindow.closed) {
+        reportWindow.close();
+      }
+      alert("Failed to generate AI report. Please check if the backend service is reachable and try again.");
     } finally {
       setGeneratingReport(false);
     }
