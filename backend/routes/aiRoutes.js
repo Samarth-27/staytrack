@@ -73,7 +73,7 @@ router.post('/chat', verifyToken, aiLimiter, async (req, res) => {
     // Call Central Agent Router
     const aiResponse = await processAIRequest(prompt, user, sessionId || user._id.toString());
     
-    res.json({ response: aiResponse });
+    res.json({ reply: aiResponse, response: aiResponse });
   } catch (error) {
     console.error('Error in /api/ai/chat:', error);
     res.status(500).json({ 

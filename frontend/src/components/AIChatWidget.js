@@ -41,7 +41,8 @@ const AIChatWidget = ({ token }) => {
 
       const data = await res.json();
       if (res.ok) {
-        setMessages(prev => [...prev, { role: 'assistant', content: data.reply }]);
+        const botReply = data.reply || data.response || data.message || 'Hello! How can I assist you today?';
+        setMessages(prev => [...prev, { role: 'assistant', content: botReply }]);
       } else {
         const detail = data.message || 'Request could not be processed';
         setMessages(prev => [...prev, { 
