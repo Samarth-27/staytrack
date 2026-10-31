@@ -11,12 +11,14 @@ const toolDefinitions = [
   { name: "getMyComplaints", description: "Fetches complaints logged by the current student.", parameters: { type: "object", properties: {} } },
   { name: "raiseComplaint", description: "Raises a new complaint for the student.", parameters: { type: "object", properties: { title: { type: "string" }, description: { type: "string" }, category: { type: "string", enum: ['maintenance', 'cleanliness', 'utilities', 'other'] } }, required: ["title", "description", "category"] } },
   
-  // --- WARDEN TOOLS ---
-  { name: "searchStudent", description: "Searches for a student by username or name. Warden only.", parameters: { type: "object", properties: { query: { type: "string" } }, required: ["query"] } },
+  // --- WARDEN / OWNER TOOLS ---
+  { name: "searchStudent", description: "Searches for a student by username, name, or room number. Warden/Owner only.", parameters: { type: "object", properties: { query: { type: "string" } }, required: ["query"] } },
   { name: "allocateRoom", description: "Allocates a room to a student. Warden only.", parameters: { type: "object", properties: { studentId: { type: "string" }, roomNumber: { type: "integer" } }, required: ["studentId", "roomNumber"] } },
   { name: "getPendingPayments", description: "Fetches all pending payments in the hostel. Warden/Owner.", parameters: { type: "object", properties: {} } },
   { name: "approvePayment", description: "Marks a payment as paid. Warden only.", parameters: { type: "object", properties: { paymentId: { type: "string" } }, required: ["paymentId"] } },
-  { name: "getRoomOccupancy", description: "Fetches overall room occupancy statistics. Warden/Owner.", parameters: { type: "object", properties: {} } },
+  { name: "getRoomOccupancy", description: "Fetches overall room occupancy statistics, total vacant rooms, occupied rooms, and occupant student details. Warden/Owner only.", parameters: { type: "object", properties: {} } },
+  { name: "getRoomDetails", description: "Fetches details of a specific room or lists all occupied rooms and their student occupants. Warden/Owner only.", parameters: { type: "object", properties: { roomNumber: { type: "integer", description: "Optional specific room number to inspect" } } } },
+  { name: "listStudents", description: "Lists students in the hostel with their assigned room numbers and contact information. Warden/Owner only.", parameters: { type: "object", properties: { filter: { type: "string", enum: ["all", "allocated", "unallocated"], description: "Optional filter by room allocation" } } } },
   { name: "getComplaintStats", description: "Fetches hostel-wide complaint statistics. Warden/Owner.", parameters: { type: "object", properties: {} } },
   
   // --- OWNER TOOLS ---
@@ -48,78 +50,177 @@ const executeTool = async (toolName, args, user) => {
 
       case 'raiseComplaint':
         if (userRole !== 'student') return { error: 'You have encountered an error: Unauthorized. Only students can raise complaints.' };
-        if (!user.roomNumber) return { error: 'You have encountered an error: No room assigned to your account. Please contact the warden to allocate your room details before submitting a complaint.' };
-        const room = await Room.findOne({ roomNumber: user.roomNumber });
-        if (!room) return { error: 'You have encountered an error: Room details could not be found. Please contact the warden to correct your room assignment.' };
-        
+        if (!args.title || !args.description || !args.category) {
+          return { error: 'You have encountered an error: Missing fields. Please provide title, description, and category.' };
+        }
         const newComplaint = new Complaint({
-          student: userId, room: room._id, title: args.title, description: args.description, category: args.category,
-          aiAnalysis: { severity: 'medium', suggestedStaff: 'General Staff', confidenceScore: 80 }
+          student: userId,
+          title: args.title,
+          description: args.description,
+          category: args.category,
+          status: 'open'
         });
         await newComplaint.save();
-        return { success: true, message: 'Complaint registered successfully.', complaintId: newComplaint._id };
+        return { success: true, message: 'Complaint lodged successfully.', complaintId: newComplaint._id };
 
       // ==========================================
       // WARDEN & OWNER TOOLS
       // ==========================================
       case 'searchStudent':
-        if (userRole !== 'warden' && userRole !== 'owner') return { error: 'You have encountered an error: Unauthorized access. Only wardens and owners can search student records.' };
-        if (!args.query) return { error: 'You have encountered an error: Missing student name or username. Please correct your details and provide a search term.' };
-        return await User.find({ role: 'student', $or: [{ name: new RegExp(args.query, 'i') }, { username: new RegExp(args.query, 'i') }] }).select('name username roomNumber status').lean();
+        if (userRole !== 'warden' && userRole !== 'owner') return { error: 'You have encountered an error: Unauthorized access.' };
+        if (!args.query) return { error: 'You have encountered an error: Missing search query.' };
+        return await User.find({
+          role: 'student',
+          status: { $ne: 'archived' },
+          $or: [
+            { name: new RegExp(args.query, 'i') },
+            { username: new RegExp(args.query, 'i') },
+            { phone: new RegExp(args.query, 'i') },
+            { email: new RegExp(args.query, 'i') },
+            ...(isNaN(Number(args.query)) ? [] : [{ roomNumber: Number(args.query) }])
+          ]
+        }).select('name username roomNumber phone email enrollmentNumber').limit(10).lean();
 
       case 'allocateRoom':
         if (userRole !== 'warden') return { error: 'You have encountered an error: Unauthorized access. Only wardens can allocate rooms.' };
-        if (!args.studentId || !args.roomNumber) return { error: 'You have encountered an error: Missing studentId or roomNumber. Please correct your details and provide both.' };
-        
-        const targetStudent = await User.findById(args.studentId);
-        if (!targetStudent) return { error: 'You have encountered an error: Student record was not found. Please correct your student details.' };
-        const oldRoomNumber = targetStudent.roomNumber;
-
-        let targetRoom = await Room.findOne({ roomNumber: args.roomNumber });
+        if (!args.studentId || !args.roomNumber) {
+          return { error: 'You have encountered an error: Missing studentId or roomNumber.' };
+        }
+        const studentToAlloc = await User.findById(args.studentId);
+        if (!studentToAlloc || studentToAlloc.role !== 'student') {
+          return { error: 'You have encountered an error: Student record not found.' };
+        }
+        const targetRoom = await Room.findOne({ roomNumber: args.roomNumber });
         if (!targetRoom) {
-          targetRoom = new Room({ roomNumber: args.roomNumber });
+          return { error: `You have encountered an error: Room ${args.roomNumber} does not exist.` };
         }
+        if (targetRoom.students && targetRoom.students.length >= targetRoom.capacity) {
+          return { error: `You have encountered an error: Room ${args.roomNumber} is at full capacity.` };
+        }
+        
+        studentToAlloc.roomNumber = targetRoom.roomNumber;
+        await studentToAlloc.save();
 
-        const occupantsCount = await User.countDocuments({ roomNumber: args.roomNumber, status: { $ne: 'archived' } });
-        if (occupantsCount >= targetRoom.capacity) {
-          return { error: `You have encountered an error: Room ${args.roomNumber} is full (capacity: ${targetRoom.capacity}). Please correct your room selection and choose a vacant room.` };
+        if (!targetRoom.students.includes(studentToAlloc._id)) {
+          targetRoom.students.push(studentToAlloc._id);
         }
-
-        if (occupantsCount + 1 >= targetRoom.capacity) {
-          targetRoom.status = 'occupied';
-        } else {
-          targetRoom.status = 'vacant';
-        }
+        targetRoom.status = targetRoom.students.length >= targetRoom.capacity ? 'occupied' : 'vacant';
         await targetRoom.save();
 
-        await User.findByIdAndUpdate(args.studentId, { roomNumber: args.roomNumber });
-
-        // Update old room status if they were moved
-        if (oldRoomNumber && oldRoomNumber !== args.roomNumber) {
-          const oldRoom = await Room.findOne({ roomNumber: oldRoomNumber });
-          if (oldRoom) {
-            const oldOccupants = await User.countDocuments({ roomNumber: oldRoomNumber, status: { $ne: 'archived' } });
-            oldRoom.status = oldOccupants >= oldRoom.capacity ? 'occupied' : 'vacant';
-            await oldRoom.save();
-          }
-        }
-
-        return { success: true, message: `Student allocated to Room ${args.roomNumber}` };
+        return { success: true, message: `Student ${studentToAlloc.name} successfully assigned to Room ${targetRoom.roomNumber}.` };
 
       case 'getPendingPayments':
-        if (userRole !== 'warden' && userRole !== 'owner') return { error: 'You have encountered an error: Unauthorized access. Only wardens and owners can view pending payments.' };
-        return await Payment.find({ status: 'pending' }).populate('student', 'name roomNumber').limit(20).lean();
+        if (userRole !== 'warden' && userRole !== 'owner') return { error: 'You have encountered an error: Unauthorized access.' };
+        return await Payment.find({ status: 'pending' }).populate('student', 'name roomNumber phone email').limit(20).lean();
 
       case 'approvePayment':
         if (userRole !== 'warden') return { error: 'You have encountered an error: Unauthorized access. Only wardens can approve payments.' };
-        if (!args.paymentId) return { error: 'You have encountered an error: Missing payment ID. Please correct your details and provide the payment ID.' };
+        if (!args.paymentId) return { error: 'You have encountered an error: Missing payment ID.' };
         const payment = await Payment.findByIdAndUpdate(args.paymentId, { status: 'paid', paidDate: Date.now() });
-        if (!payment) return { error: 'You have encountered an error: Payment record not found. Please verify and correct the payment ID.' };
+        if (!payment) return { error: 'You have encountered an error: Payment record not found.' };
         return { success: true, message: 'Payment approved.' };
 
-      case 'getRoomOccupancy':
+      case 'getRoomOccupancy': {
         if (userRole !== 'warden' && userRole !== 'owner') return { error: 'You have encountered an error: Unauthorized access.' };
-        return { total: await Room.countDocuments(), occupied: await Room.countDocuments({ status: 'occupied' }), vacant: await Room.countDocuments({ status: 'vacant' }) };
+        const totalRooms = await Room.countDocuments();
+        const vacantCount = await Room.countDocuments({ status: 'vacant' });
+        
+        // Find occupied rooms and populate assigned students
+        const occupiedRooms = await Room.find({
+          $or: [{ status: 'occupied' }, { 'students.0': { $exists: true } }]
+        }).populate('students', 'name username email phone roomNumber rollNumber enrollmentNumber').lean();
+
+        const occupiedList = [];
+        for (const r of occupiedRooms) {
+          let studentDetails = (r.students || []).map(s => ({
+            name: s.name,
+            username: s.username,
+            phone: s.phone,
+            email: s.email,
+            enrollmentNumber: s.enrollmentNumber || s.rollNumber
+          }));
+
+          // Fallback: If r.students array was empty but room is marked occupied, find students with this roomNumber
+          if (studentDetails.length === 0) {
+            const matched = await User.find({ role: 'student', roomNumber: r.roomNumber, status: { $ne: 'archived' } })
+              .select('name username phone email enrollmentNumber rollNumber')
+              .lean();
+            studentDetails = matched.map(s => ({
+              name: s.name,
+              username: s.username,
+              phone: s.phone,
+              email: s.email,
+              enrollmentNumber: s.enrollmentNumber || s.rollNumber
+            }));
+          }
+
+          occupiedList.push({
+            roomNumber: r.roomNumber,
+            capacity: r.capacity || 2,
+            occupantsCount: studentDetails.length,
+            students: studentDetails
+          });
+        }
+
+        return {
+          totalRooms,
+          vacantRooms: vacantCount,
+          occupiedRoomsCount: occupiedList.length,
+          occupiedRooms: occupiedList
+        };
+      }
+
+      case 'getRoomDetails': {
+        if (userRole !== 'warden' && userRole !== 'owner') return { error: 'You have encountered an error: Unauthorized access.' };
+        const query = args.roomNumber 
+          ? { roomNumber: Number(args.roomNumber) } 
+          : { $or: [{ status: 'occupied' }, { 'students.0': { $exists: true } }] };
+
+        const rooms = await Room.find(query).populate('students', 'name username email phone roomNumber rollNumber enrollmentNumber').lean();
+        const result = [];
+
+        for (const r of rooms) {
+          let occupants = (r.students || []).map(s => ({
+            name: s.name,
+            username: s.username,
+            phone: s.phone,
+            email: s.email
+          }));
+
+          if (occupants.length === 0) {
+            const fallbackStudents = await User.find({ role: 'student', roomNumber: r.roomNumber, status: { $ne: 'archived' } })
+              .select('name username phone email')
+              .lean();
+            occupants = fallbackStudents.map(s => ({ name: s.name, username: s.username, phone: s.phone, email: s.email }));
+          }
+
+          result.push({
+            roomNumber: r.roomNumber,
+            status: r.status,
+            capacity: r.capacity || 2,
+            occupantsCount: occupants.length,
+            students: occupants
+          });
+        }
+
+        return result;
+      }
+
+      case 'listStudents': {
+        if (userRole !== 'warden' && userRole !== 'owner') return { error: 'You have encountered an error: Unauthorized access.' };
+        const studentQuery = { role: 'student', status: { $ne: 'archived' } };
+        if (args.filter === 'allocated') studentQuery.roomNumber = { $exists: true, $ne: null };
+        if (args.filter === 'unallocated') studentQuery.roomNumber = { $in: [null, undefined] };
+        
+        const students = await User.find(studentQuery).select('name username roomNumber phone email enrollmentNumber').lean();
+        return students.map(s => ({
+          name: s.name,
+          username: s.username,
+          roomNumber: s.roomNumber ? `Room ${s.roomNumber}` : 'Unallocated',
+          phone: s.phone || 'N/A',
+          email: s.email || 'N/A'
+        }));
+      }
 
       case 'getComplaintStats':
         if (userRole !== 'warden' && userRole !== 'owner') return { error: 'You have encountered an error: Unauthorized access.' };
