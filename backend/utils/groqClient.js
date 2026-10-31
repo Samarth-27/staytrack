@@ -160,11 +160,12 @@ const groqClient = {
             }
 
             if (functionCallPart) {
+              const callId = functionCallPart.id || `call_${Math.random().toString(36).substring(2, 9)}`;
               messages.push({
                 role: 'assistant',
                 content: null,
                 tool_calls: [{
-                  id: `call_${Math.random().toString(36).substring(2, 9)}`,
+                  id: callId,
                   type: 'function',
                   function: {
                     name: functionCallPart.name,
@@ -285,6 +286,7 @@ const groqClient = {
               parsedArgs = {};
             }
             functionCalls.push({
+              id: tc.id,
               name: tc.function.name,
               args: parsedArgs
             });
