@@ -1,21 +1,53 @@
 const express = require('express');
-const { verifyToken } = require('../middleware/auth');
+const { verifyToken, checkRole } = require('../middleware/auth');
 const User = require('../models/User');
 const { processAIRequest } = require('../utils/aiRouter');
 const rateLimit = require('express-rate-limit');
+const Payment = require('../models/Payment');
+const Complaint = require('../models/Complaint');
+const Room = require('../models/Room');
+const aiClientInstance = require('../utils/groqClient');
 
 // Rate limiting middleware specifically for AI to prevent billing abuse
 const aiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 20, // limit each IP to 20 AI requests per windowMs
+  max: 30, // limit each IP to 30 AI requests per windowMs
   message: { message: 'Too many AI requests from this IP, please try again after 15 minutes.' }
 });
 
-const aiClientInstance = require('../utils/groqClient');
 const router = express.Router();
 
+/**
+ * GET /api/ai/models
+ * Diagnostic endpoint: lists all models permitted and active on the current Groq API key
+ */
+router.get('/models', async (req, res) => {
+  try {
+    if (!aiClientInstance || !aiClientInstance.raw) {
+      return res.status(503).json({
+        success: false,
+        message: 'Groq client is not initialized. Please ensure GROQ_API_KEY is configured in your environment.'
+      });
+    }
+
+    const list = await aiClientInstance.raw.models.list();
+    const models = (list?.data || []).map(m => m.id);
+    return res.json({
+      success: true,
+      count: models.length,
+      availableModels: models
+    });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      error: err.message,
+      statusCode: err.status || 500
+    });
+  }
+});
+
 router.use((req, res, next) => {
-  if (!aiClientInstance) {
+  if (!aiClientInstance || !aiClientInstance.raw) {
     return res.status(503).json({ message: 'AI features are currently disabled because the server is missing the GROQ_API_KEY configuration.' });
   }
   next();
@@ -33,70 +65,82 @@ router.post('/chat', verifyToken, aiLimiter, async (req, res) => {
       return res.status(400).json({ message: 'Prompt is required' });
     }
 
-    // Fetch user with role
-    const user = await User.findById(req.user.userId);
+    const user = await User.findById(req.user.userId || req.user._id).select('-password');
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    const aiResponse = await processAIRequest(prompt, user, sessionId || 'default-session');
-
-    res.json({ reply: aiResponse });
+    // Call Central Agent Router
+    const aiResponse = await processAIRequest(prompt, user, sessionId || user._id.toString());
+    
+    res.json({ response: aiResponse });
   } catch (error) {
-    console.error('AI Chat Error:', error);
-    res.status(500).json({ message: 'Error processing AI request', error: error.message });
+    console.error('Error in /api/ai/chat:', error);
+    res.status(500).json({ 
+      message: 'You have encountered an error: ' + error.message,
+      error: error.message 
+    });
   }
 });
 
-const { checkRole } = require('../middleware/auth');
-const { generateMonthlyReport, generatePredictions } = require('../utils/aiAnalyticsService');
+/**
+ * GET /api/ai/memory/:sessionId
+ * Retrieves past conversation memory for the session
+ */
+router.get('/memory/:sessionId', verifyToken, async (req, res) => {
+  try {
+    const { getSessionMemory } = require('../utils/aiMemoryService');
+    const memory = await getSessionMemory(req.user.userId || req.user._id, req.params.sessionId);
+    res.json({ history: memory });
+  } catch (error) {
+    res.status(500).json({ message: 'Error retrieving memory', error: error.message });
+  }
+});
 
 /**
- * GET /api/ai/insights
- * Returns predictive analytics
+ * DELETE /api/ai/memory/:sessionId
+ * Clears conversation history for the session
  */
-router.get('/insights', verifyToken, checkRole(['owner']), async (req, res) => {
+router.delete('/memory/:sessionId', verifyToken, async (req, res) => {
   try {
+    const AIMemory = require('../models/AIMemory');
+    await AIMemory.findOneAndDelete({ 
+      user: req.user.userId || req.user._id, 
+      sessionId: req.params.sessionId 
+    });
+    res.json({ message: 'Conversation memory cleared' });
+  } catch (error) {
+    res.status(500).json({ message: 'Error clearing memory', error: error.message });
+  }
+});
+
+/**
+ * GET /api/ai/analytics/dashboard
+ * Aggregates statistics and generates executive AI summary
+ */
+router.get('/analytics/dashboard', verifyToken, checkRole(['owner']), async (req, res) => {
+  try {
+    const { generateExecutiveSummary } = require('../utils/aiAnalyticsService');
+    const summary = await generateExecutiveSummary();
+    res.json(summary);
+  } catch (error) {
+    res.status(500).json({ message: 'Error generating executive summary', error: error.message });
+  }
+});
+
+/**
+ * GET /api/ai/analytics/predictions
+ * Runs predictive analysis on maintenance issues and revenue
+ */
+router.get('/analytics/predictions', verifyToken, checkRole(['owner', 'warden']), async (req, res) => {
+  try {
+    const { generatePredictions } = require('../utils/aiAnalyticsService');
     const predictions = await generatePredictions();
-    res.json(predictions || {});
+    res.json(predictions);
   } catch (error) {
-    res.status(500).json({ message: 'Error fetching insights', error: error.message });
+    res.status(500).json({ message: 'Error generating predictions', error: error.message });
   }
 });
-
-/**
- * GET /api/ai/reports/monthly
- * Generates automated executive report
- */
-router.get('/reports/monthly', verifyToken, checkRole(['owner']), async (req, res) => {
-  try {
-    const month = req.query.month || new Date().toISOString().slice(0, 7); // Default YYYY-MM
-    const report = await generateMonthlyReport(month);
-    res.json(report);
-  } catch (error) {
-    res.status(500).json({ message: 'Error generating report', error: error.message });
-  }
-});
-
-const { sendSmartPaymentReminders } = require('../utils/aiNotificationService');
-
-/**
- * POST /api/ai/notifications/remind-fees
- * Triggers AI to write and send personalized emails
- */
-router.post('/notifications/remind-fees', verifyToken, checkRole(['warden', 'owner']), async (req, res) => {
-  try {
-    const result = await sendSmartPaymentReminders();
-    res.json({ message: `Successfully sent ${result.count} smart reminders.` });
-  } catch (error) {
-    res.status(500).json({ message: 'Error sending reminders', error: error.message });
-  }
-});
-
-const Payment = require('../models/Payment');
-const Complaint = require('../models/Complaint');
-const Room = require('../models/Room');
-const aiClient = require('../utils/groqClient');
 
 /**
  * GET /api/ai/reports/warden-summary
@@ -126,8 +170,7 @@ router.get('/reports/warden-summary', verifyToken, checkRole(['warden', 'owner']
       ${dataSnapshot}
     `;
 
-    const response = await aiClient.models.generateContent({
-      model: 'llama-3.1-8b-instant',
+    const response = await aiClientInstance.models.generateContent({
       contents: prompt
     });
 
