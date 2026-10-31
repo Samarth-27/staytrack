@@ -41,7 +41,7 @@ const processReceiptOCR = async (paymentId, screenshotUrl) => {
     `;
 
     const response = await aiClient.models.generateContent({
-      model: 'llama-3.3-70b-versatile',
+      model: 'llama-3.1-8b-instant',
       contents: [
         { role: 'user', parts: [ { text: prompt }, { inlineData } ] }
       ],

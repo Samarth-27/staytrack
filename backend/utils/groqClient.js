@@ -1,7 +1,7 @@
 // backend/utils/groqClient.js
 const Groq = require('groq-sdk');
 
-// Support GROQ_API_KEY as primary, with fallback to GEMINI_API_KEY if the user pasted it there
+// Support GROQ_API_KEY as primary, with fallback to GEMINI_API_KEY if user pasted it there
 const apiKey = process.env.GROQ_API_KEY || process.env.GEMINI_API_KEY;
 let rawGroq = null;
 
@@ -19,6 +19,7 @@ if (apiKey && apiKey.trim().length > 0) {
 /**
  * Adapter that provides both direct access to Groq SDK
  * and an interface compatible with existing AI service calls.
+ * Includes automatic model fallback to universally accessible Groq models.
  */
 const groqClient = {
   raw: rawGroq,
@@ -117,12 +118,10 @@ const groqClient = {
       }
 
       // 3. Resolve Target Groq Model
-      // Use Llama 3.2 Vision for image OCR; Llama 3.3 70B Versatile for high-reasoning tasks
-      let targetModel = 'llama-3.3-70b-versatile';
+      // Use llama-3.1-8b-instant as the universal reliable default, or user-defined GROQ_MODEL
+      let targetModel = process.env.GROQ_MODEL || 'llama-3.1-8b-instant';
       if (hasVision) {
-        targetModel = 'llama-3.2-11b-vision-preview';
-      } else if (model && model.includes('8b')) {
-        targetModel = 'llama-3.1-8b-instant';
+        targetModel = process.env.GROQ_VISION_MODEL || 'llama-3.2-11b-vision-preview';
       }
 
       // 4. Build Request Payload
@@ -161,8 +160,37 @@ const groqClient = {
         }
       }
 
-      // 7. Execute Request on Groq
-      const completion = await rawGroq.chat.completions.create(payload);
+      // 7. Execute Request on Groq with Automated Model Fallback
+      let completion = null;
+      try {
+        completion = await rawGroq.chat.completions.create(payload);
+      } catch (err) {
+        const errMsg = (err && (err.message || '')) + '';
+        const isModelNotFound = err.status === 404 || 
+                                err.code === 'model_not_found' || 
+                                errMsg.includes('does not exist') ||
+                                errMsg.includes('model');
+
+        if (isModelNotFound && payload.model !== 'llama-3.1-8b-instant') {
+          console.warn(`⚠️ Groq model '${payload.model}' not accessible on this account (${errMsg}). Retrying automatically with universal 'llama-3.1-8b-instant'...`);
+          payload.model = 'llama-3.1-8b-instant';
+          
+          // If falling back from vision to text model, ensure messages content is pure string
+          if (hasVision) {
+            for (let msg of payload.messages) {
+              if (Array.isArray(msg.content)) {
+                const textOnly = msg.content.filter(p => p.type === 'text').map(p => p.text).join('\n');
+                msg.content = textOnly || 'Analyze the provided payment receipt details.';
+              }
+            }
+          }
+
+          completion = await rawGroq.chat.completions.create(payload);
+        } else {
+          throw err;
+        }
+      }
+
       const choice = completion.choices?.[0];
       const message = choice?.message || {};
 

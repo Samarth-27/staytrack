@@ -20,7 +20,7 @@ const retrieveRelevantContext = async (query) => {
     if (aiClient) {
       try {
         const embedResponse = await aiClient.models.embedContent({
-          model: 'llama-3.3-70b-versatile',
+          model: 'llama-3.1-8b-instant',
           contents: query
         });
         const queryVector = embedResponse.embeddings[0].values;

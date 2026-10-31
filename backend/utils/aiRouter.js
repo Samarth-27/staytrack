@@ -112,7 +112,7 @@ You MUST respond using this exact format:
     
     // 5. Call LLM (using the latest Google GenAI SDK interface)
     let response = await aiClient.models.generateContent({
-      model: 'llama-3.3-70b-versatile',
+      model: 'llama-3.1-8b-instant',
       contents: contents,
       config: {
         systemInstruction: systemPrompt,
@@ -150,7 +150,7 @@ You MUST respond using this exact format:
 
       // Call LLM again to synthesize the final response or decide next tool
       response = await aiClient.models.generateContent({
-        model: 'llama-3.3-70b-versatile',
+        model: 'llama-3.1-8b-instant',
         contents: contents,
         config: {
           systemInstruction: systemPrompt,

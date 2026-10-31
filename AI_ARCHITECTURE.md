@@ -13,7 +13,7 @@ Welcome to the AI-Powered Hostel Operating System. This document explains how th
 Located in `frontend/src/components/AIChatWidget.js`.
 - A floating React component accessible on Warden and Owner dashboards.
 - Sends prompts to `POST /api/ai/chat`.
-- The `aiRouter.js` processes the request, loads session memory from MongoDB (`AIMemory`), and assigns a role-specific system prompt using `llama-3.3-70b-versatile` on Groq.
+- The `aiRouter.js` processes the request, loads session memory from MongoDB (`AIMemory`), and assigns a role-specific system prompt using `llama-3.1-8b-instant` on Groq.
 
 ## 2. Tool Calling (Function Calling)
 Located in `backend/utils/aiTools.js`.
